@@ -1,1 +1,7 @@
-ola mundo;
+funcao __media(!e, !aa){
+  __
+
+  inteiro !media = 0;
+  !media = (!e + !aa);
+  retorno !media;
+}
