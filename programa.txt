@@ -1,2 +1,7 @@
-2025-07-02 08:31
-teste
+funcao __media(!e, !aa){
+  __
+
+  inteiro !media = 0;
+  !media = (!e + !aa);
+  retorno !media;
+}
