@@ -113,4 +113,4 @@ int verifySymbols(char line[256], int listNumberd) {
 }
 
 
-
+/

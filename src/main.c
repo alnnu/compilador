@@ -9,7 +9,6 @@ void main(){
   int pageCount = 0;
   
   file = fopen("../programa.txt", "r"); 
-  
   char line[256]; 
   
 
