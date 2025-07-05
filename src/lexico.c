@@ -84,6 +84,32 @@ int isOperator(char *token) {
   }
   return -1;
 }
+int balancing(char opemSymbol, char closeSymbols, List *li, int lineNumber) {
+
+  int count = 0;
+
+  Elem *no = *li;
+ 
+  while(no != NULL) {
+    int i = 0;
+    while(no->line.value[i] != '\0') {
+      if(no->line.value[i] == opemSymbol) {
+        count++;
+      }else if(no->line.value[i] == closeSymbols) {
+        count--;
+      }
+      i++;
+    }
+    no = no->prox;
+  }
+
+  if(count != 0) {
+    printf("Erro de balanceamento: '%c' na linha '%d' nao esta balanceado.\n", opemSymbol, lineNumber);
+    return 1;
+  }else {
+    return 0;
+  }
+}
 
 int verifySymbols(List* li) {
   int i = 0;
@@ -110,10 +136,17 @@ int verifySymbols(List* li) {
         if(isReservedWord(tokens) != 0 && isVaribleOrFunction(tokens) != 0 && isOperator(tokens) != 0) {
           errorFlag = 1;
           printf("Erro na linha %d, na palavra '%s'\n", no->line.lineNumber, tokens);
-          break;
         }
       }else {
+        if(no->line.value[i] == '(') {
+          errorFlag = balancing('(', ')', li, no->line.lineNumber);
+        }else if(no->line.value[i] == '{') {
+          errorFlag = balancing('{', '}', li, no->line.lineNumber);
+        }
         i++;
+      }
+      if(errorFlag == 1) {
+        break;
       }
     }
     if(errorFlag == 1) {
