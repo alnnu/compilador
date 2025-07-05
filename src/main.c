@@ -4,11 +4,13 @@
 #include <string.h>
 
 void main(){
-  printf("Compilador iniciado\n"); 
+  printf("Compilador iniciado\n");
   FILE *file;
   int pageCount = 0;
+  List *lineList = createList();
   
   file = fopen("../programa.txt", "r"); 
+  
   char line[256]; 
   
 
@@ -18,11 +20,13 @@ void main(){
   }
 
   while (fgets(line, sizeof(line), file) != NULL) {
-    if(verifySymbols(line, pageCount) == 1) {
-      break;
-    }
+    struct Line al;
+    al.lineNumber = pageCount;
+    strcpy(al.value, line);
+    insertList(lineList, al);
     pageCount++;
   }
 
+  verifySymbols(lineList);
 
 }

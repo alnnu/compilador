@@ -1,12 +1,15 @@
+
+
 struct Line{
-    string value[256];
+    char value[256];
     int lineNumber;
 };
 
-typedef struct elemento* List;
+typedef struct element* List;
 
-Lista* createList();
+List* createList();
 void freeList(List* li);
 int insertList(List* li, struct Line al);
-int removeList(Lista* li, int lineNumber);
-int readLine(Lista* li,int lineNumber, struct aluno *al);
+int removeList(List* li, int lineNumber);
+int readLine(List* li,int lineNumber, struct Line *al);
+
