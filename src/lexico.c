@@ -104,7 +104,8 @@ int balancing(char opemSymbol, char closeSymbols, List *li, int lineNumber) {
   }
 
   if(count != 0) {
-    printf("Erro de balanceamento: '%c' na linha '%d' nao esta balanceado.\n", opemSymbol, lineNumber);
+    printf("Erro de balanceamento: os '%c' nao estao balanceados.\n", opemSymbol, lineNumber);
+
     return 1;
   }else {
     return 0;
@@ -138,9 +139,9 @@ int verifySymbols(List* li) {
           printf("Erro na linha %d, na palavra '%s'\n", no->line.lineNumber, tokens);
         }
       }else {
-        if(no->line.value[i] == '(') {
+        if(no->line.value[i] == '(' || no->line.value[i] == ')') {
           errorFlag = balancing('(', ')', li, no->line.lineNumber);
-        }else if(no->line.value[i] == '{') {
+        }else if(no->line.value[i] == '{' || no->line.value[i] == '}') {
           errorFlag = balancing('{', '}', li, no->line.lineNumber);
         }
         i++;

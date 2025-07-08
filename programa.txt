@@ -1,6 +1,7 @@
-funcao __media(!e, !aa{
+funcao __media(!e, !aa){
 
     inteiro !media = 0;
     !media = (!e + !aa);
-   ) retorno !media;
+    retorno !media;
+}
 
