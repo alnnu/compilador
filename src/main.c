@@ -272,6 +272,8 @@ Token* get_next_token() {
                 return create_token(TOKEN_ERRO, my_strdup("Operador inválido"));
               }
           } while (is_operator(str));
+
+          Free(str, 3 * sizeof(char));
         }
 
             if (current_char == '<' && next_char == '>') { current_pos += 2; return create_token(TOKEN_OP_DIF, my_strdup("<>")); }
