@@ -5,7 +5,7 @@ principal() {
     !b2 = !a;
     escreva("Escreva um numero");
     leia(!a);
-    se (!a => !b2) {
+    se (!a >= !b2) {
         escreva("A e maior", !a);
     } senao {
         escreva("B e maior", "b");

@@ -8,12 +8,15 @@ funcao __vazia() {
 
 principal() {
     inteiro !x = 10;
-    inteiro !y = 20;
+    inteiro y = 20;
     inteiro !resultado;
 
     !resultado = __soma(!x, !y);
 
     escreva("O resultado da soma é: ", !resultado);
 
-    !x => !y;
+    !x ++;
+    !x <= !y;
+    !x >= !y;
+    +++
 }

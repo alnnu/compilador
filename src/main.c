@@ -162,6 +162,15 @@ int is_keyword(const char* str) {
     return 0;
 }
 
+int is_operator(const char *str) {
+    return (strcmp(str, "+") == 0 || strcmp(str, "-") == 0 || strcmp(str, "*") == 0 ||
+            strcmp(str, "/") == 0 || strcmp(str, "^") == 0 || strcmp(str, "=") == 0 ||
+            strcmp(str, "==") == 0 || strcmp(str, "<>") == 0 || strcmp(str, "<") == 0 ||
+            strcmp(str, "<=") == 0 || strcmp(str, ">") == 0 || strcmp(str, ">=") == 0 ||
+            strcmp(str, "&&") == 0 || strcmp(str, "||") == 0);
+}
+
+
 Token* get_next_token() {
     while (current_file_content[current_pos] != '\0') {
         char current_char = current_file_content[current_pos];
@@ -246,41 +255,51 @@ Token* get_next_token() {
         /* Operadores e Separadores */
         char next_char = current_file_content[current_pos + 1];
 
-        /* Prioriza operadores de 2 caracteres (válidos e inválidos) */
-        if (next_char != '\0') { /* Garante que há um próximo caractere para checar */
-            if (current_char == '=' && next_char == '=') { current_pos += 2; return create_token(TOKEN_OP_IGUAL, my_strdup("==")); }
-            if (current_char == '<' && next_char == '>') { current_pos += 2; return create_token(TOKEN_OP_DIF, my_strdup("<>")); }
-            if (current_char == '<' && next_char == '=') { current_pos += 2; return create_token(TOKEN_OP_MENOR_IGUAL, my_strdup("<=")); }
-            if (current_char == '>' && next_char == '=') { current_pos += 2; return create_token(TOKEN_OP_MAIOR_IGUAL, my_strdup(">=")); }
-            if (current_char == '&' && next_char == '&') { current_pos += 2; return create_token(TOKEN_OP_E, my_strdup("&&")); }
-            if (current_char == '|' && next_char == '|') { current_pos += 2; return create_token(TOKEN_OP_OU, my_strdup("||")); }
+        /* ver se tem mais de 2 caracteres */
+        if(current_char == '<' || current_char == '>' || current_char == '=' || current_char == '&' || current_char == '|' || current_char == '+' || current_char == '-' ) {
+          int i = 1;      
+          char *str = (char*)Malloc(3 * sizeof(char));
+          str[0] = current_char;
+          str[1] = '\0';
+          
 
-            /* Checagem de operadores inválidos conhecidos */
-            if ((current_char == '=' && next_char == '>') || (current_char == '=' && next_char == '<') || (current_char == '!' && next_char == '=')) {
-                current_pos += 2;
-                char err_msg[50];
-                sprintf(err_msg, "Operador inválido: %c%c", current_char, next_char);
-                return create_token(TOKEN_ERRO, my_strdup(err_msg));
-            }
+          do {
+            i++;
+              if(i <= 2) {
+                str[i - 1] = current_file_content[current_pos + i];
+                str[i] = '\0';
+              }else {
+                return create_token(TOKEN_ERRO, my_strdup("Operador inválido"));
+              }
+          } while (is_operator(str));
         }
 
-        /* Se não for um operador de 2 caracteres, processa como um de 1 caractere */
-        if (current_char == '+') { current_pos++; return create_token(TOKEN_OP_SOMA, my_strdup("+")); }
-        if (current_char == '-') { current_pos++; return create_token(TOKEN_OP_SUB, my_strdup("-")); }
-        if (current_char == '*') { current_pos++; return create_token(TOKEN_OP_MULT, my_strdup("*")); }
-        if (current_char == '/') { current_pos++; return create_token(TOKEN_OP_DIV, my_strdup("/")); }
-        if (current_char == '^') { current_pos++; return create_token(TOKEN_OP_EXP, my_strdup("^")); }
-        if (current_char == '=') { current_pos++; return create_token(TOKEN_OP_ATRIB, my_strdup("=")); }
-        if (current_char == '<') { current_pos++; return create_token(TOKEN_OP_MENOR, my_strdup("<")); }
-        if (current_char == '>') { current_pos++; return create_token(TOKEN_OP_MAIOR, my_strdup(">")); }
-        if (current_char == '(') { current_pos++; return create_token(TOKEN_LPAREN, my_strdup("(")); }
-        if (current_char == ')') { current_pos++; return create_token(TOKEN_RPAREN, my_strdup(")")); }
-        if (current_char == '{') { current_pos++; return create_token(TOKEN_LBRACE, my_strdup("{")); }
-        if (current_char == '}') { current_pos++; return create_token(TOKEN_RBRACE, my_strdup("}")); }
-        if (current_char == '[') { current_pos++; return create_token(TOKEN_LBRACKET, my_strdup("[")); }
-        if (current_char == ']') { current_pos++; return create_token(TOKEN_RBRACKET, my_strdup("]")); }
-        if (current_char == ',') { current_pos++; return create_token(TOKEN_VIRGULA, my_strdup(",")); }
-        if (current_char == ';') { current_pos++; return create_token(TOKEN_PONTO_VIRGULA, my_strdup(";")); }
+            if (current_char == '<' && next_char == '>') { current_pos += 2; return create_token(TOKEN_OP_DIF, my_strdup("<>")); }
+            else if (current_char == '=' && next_char == '=') { current_pos += 2; return create_token(TOKEN_OP_IGUAL, my_strdup("==")); }
+            else if (current_char == '<' && next_char == '=') { current_pos += 2; return create_token(TOKEN_OP_MENOR_IGUAL, my_strdup("<=")); }
+            else if (current_char == '>' && next_char == '=') { current_pos += 2; return create_token(TOKEN_OP_MAIOR_IGUAL, my_strdup(">=")); }
+            else if (current_char == '&' && next_char == '&') { current_pos += 2; return create_token(TOKEN_OP_E, my_strdup("&&")); }
+            else if (current_char == '|' && next_char == '|') { current_pos += 2; return create_token(TOKEN_OP_OU, my_strdup("||")); }
+            else if (current_char == '+') { current_pos++; return create_token(TOKEN_OP_SOMA, my_strdup("+")); }
+            else if (current_char == '-') { current_pos++; return create_token(TOKEN_OP_SUB, my_strdup("-")); }
+            else if (current_char == '*') { current_pos++; return create_token(TOKEN_OP_MULT, my_strdup("*")); }
+            else if (current_char == '/') { current_pos++; return create_token(TOKEN_OP_DIV, my_strdup("/")); }
+            else if (current_char == '^') { current_pos++; return create_token(TOKEN_OP_EXP, my_strdup("^")); }
+            else if (current_char == '=') { current_pos++; return create_token(TOKEN_OP_ATRIB, my_strdup("=")); }
+            else if (current_char == '<') { current_pos++; return create_token(TOKEN_OP_MENOR, my_strdup("<")); }
+            else if (current_char == '>') { current_pos++; return create_token(TOKEN_OP_MAIOR, my_strdup(">")); }
+            else if (current_char == '(') { current_pos++; return create_token(TOKEN_LPAREN, my_strdup("(")); }
+            else if (current_char == ')') { current_pos++; return create_token(TOKEN_RPAREN, my_strdup(")")); }
+            else if (current_char == '{') { current_pos++; return create_token(TOKEN_LBRACE, my_strdup("{")); }
+            else if (current_char == '}') { current_pos++; return create_token(TOKEN_RBRACE, my_strdup("}")); }
+            else if (current_char == '[') { current_pos++; return create_token(TOKEN_LBRACKET, my_strdup("[")); }
+            else if (current_char == ']') { current_pos++; return create_token(TOKEN_RBRACKET, my_strdup("]")); }
+            else if (current_char == ',') { current_pos++; return create_token(TOKEN_VIRGULA, my_strdup(",")); }
+            else if (current_char == ';') { current_pos++; return create_token(TOKEN_PONTO_VIRGULA, my_strdup(";")); }
+             else {
+              current_pos += 2;
+              return create_token(TOKEN_ERRO, my_strdup("Operador inválido"));
+            }
 
         /* Se chegou aqui, é um caractere inválido */
         current_pos++;
@@ -339,3 +358,4 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
