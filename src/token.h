@@ -1,0 +1,30 @@
+#ifndef TOKEN_H
+#define TOKEN_H
+
+typedef enum {
+    TOKEN_EOF, TOKEN_ERRO,
+    /* Palavras Reservadas */
+    TOKEN_PRINCIPAL, TOKEN_FUNCAO, TOKEN_RETORNO, TOKEN_LEIA, TOKEN_ESCREVA,
+    TOKEN_SE, TOKEN_SENAO, TOKEN_PARA, TOKEN_INTEIRO, TOKEN_TEXTO, TOKEN_DECIMAL,
+    /* Identificadores */
+    TOKEN_ID_VAR, TOKEN_ID_FUNC,
+    /* Literais */
+    TOKEN_LITERAL_INT, TOKEN_LITERAL_DEC, TOKEN_LITERAL_TEXTO,
+    /* Operadores */
+    TOKEN_OP_SOMA, TOKEN_OP_SUB, TOKEN_OP_MULT, TOKEN_OP_DIV, TOKEN_OP_EXP,
+    TOKEN_OP_ATRIB, TOKEN_OP_IGUAL, TOKEN_OP_DIF, TOKEN_OP_MENOR, TOKEN_OP_MENOR_IGUAL,
+    TOKEN_OP_MAIOR, TOKEN_OP_MAIOR_IGUAL, TOKEN_OP_E, TOKEN_OP_OU, TOKEN_OP_INC, TOKEN_OP_DEC,
+    /* Separadores */
+    TOKEN_LPAREN, TOKEN_RPAREN, TOKEN_LBRACE, TOKEN_RBRACE,
+    TOKEN_LBRACKET, TOKEN_RBRACKET, TOKEN_VIRGULA, TOKEN_PONTO_VIRGULA, TOKEN_PONTO
+} TokenType;
+
+typedef struct {
+    TokenType type;
+    char* value;
+    int line;
+} Token;
+
+const char* token_type_to_string(TokenType type);
+
+#endif
