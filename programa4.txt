@@ -1,0 +1,5 @@
+funcao __minhaFuncao() {}
+funcao __outrafuncao123() {}
+funcao __() {}
+funcao __!funcao() {}
+principal() {}

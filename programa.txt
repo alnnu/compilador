@@ -1,7 +1,16 @@
-funcao __media(!e, !aa){
-  __
-
-  inteiro !media = 0;
-  !media = (!e + !aa);
-  retorno !media;
+principal() {
+    inteiro !a, !b2 = 7;
+    decimal !cc[2.5];
+    inteiro !d; 
+    !b2 = !a;
+    escreva("Escreva um numero");
+    leia(!a);
+    se (!a >= !b2) {
+        escreva("A e maior", !a);
+    } senao {
+        escreva("B e maior", "b");
+    }
+    para (!d = 1; !d <= 100; !d = !d + 2) {
+        escreva("D", !d);
+    }
 }

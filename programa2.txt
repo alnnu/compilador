@@ -1,0 +1,22 @@
+funcao __soma(inteiro !a, inteiro !b) {
+    retorno !a + !b;
+}
+
+funcao __vazia() {
+    escreva("Função vazia chamada");
+}
+
+principal() {
+    inteiro !x = 10;
+    inteiro y = 20;
+    inteiro !resultado;
+
+    !resultado = __soma(!x, !y);
+
+    escreva("O resultado da soma é: ", !resultado);
+
+    !x ++;
+    !x <= !y;
+    !x >= !y;
+    +++
+}
