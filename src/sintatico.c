@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "sintatico.h"
+#include "sintatico.h" 
 #include "lexico.h"
 
 static Token* currentToken;
@@ -25,6 +25,12 @@ static void parse_expressao();
 static void parse_expressao_simples();
 static void parse_termo();
 static void parse_fator();
+
+/* Novos protótipos para o laço 'para' x3 */
+static void parse_expressao_para_x3();
+static void parse_expressao_simples_para_x3();
+static void parse_termo_para_x3();
+static void parse_fator_para_x3();
 
 static void error(const char* message) {
     printf("ERRO SINTÁTICO na linha %d: %s. Token inesperado: '%s' (%s)\n", 
@@ -121,8 +127,14 @@ static void parse_comando() {
         case TOKEN_TEXTO:
             parse_declaracao_variavel();
             break;
+        /* Permite que expressões sejam comandos */
         case TOKEN_ID_VAR:
-            parse_atribuicao();
+        case TOKEN_LITERAL_INT:
+        case TOKEN_LITERAL_DEC:
+        case TOKEN_LITERAL_TEXTO:
+        case TOKEN_LPAREN:
+            parse_expressao();
+            consume(TOKEN_PONTO_VIRGULA);
             break;
         case TOKEN_SE:
             parse_comando_se();
@@ -230,7 +242,7 @@ static void parse_comando_para() {
 
     /* x3 - Incremento */
     if (currentToken->type != TOKEN_RPAREN) {
-        parse_atribuicao_sem_pv();
+        parse_expressao_para_x3(); /* Usa a nova função para x3 */
     }
 
     consume(TOKEN_RPAREN);
@@ -323,3 +335,65 @@ static void parse_expressao() {
         parse_expressao_simples();
     }
 }
+
+/* Implementações para o laço 'para' x3 */
+static void parse_fator_para_x3() {
+    /* Trata operadores de pré-incremento/decremento */
+    if (currentToken->type == TOKEN_OP_INC || currentToken->type == TOKEN_OP_DEC) {
+        consume(currentToken->type);
+        consume(TOKEN_ID_VAR);
+        return; /* Retorna pois isso é um fator completo */
+    }
+
+    switch (currentToken->type) {
+        case TOKEN_LITERAL_INT:
+        case TOKEN_LITERAL_DEC:
+        case TOKEN_LITERAL_TEXTO:
+        case TOKEN_ID_VAR:
+            consume(currentToken->type);
+            break;
+        case TOKEN_LPAREN:
+            consume(TOKEN_LPAREN);
+            parse_expressao_para_x3();
+            consume(TOKEN_RPAREN);
+            break;
+        default:
+            error("Fator inválido em expressão para x3 do para.");
+    }
+
+    /* Trata operadores de pós-incremento/decremento */
+    if (currentToken->type == TOKEN_OP_INC || currentToken->type == TOKEN_OP_DEC) {
+        consume(currentToken->type);
+    }
+}
+
+static void parse_termo_para_x3() {
+    parse_fator_para_x3();
+    while (currentToken->type == TOKEN_OP_MULT || currentToken->type == TOKEN_OP_DIV || currentToken->type == TOKEN_OP_EXP) {
+        consume(currentToken->type);
+        parse_fator_para_x3();
+    }
+}
+
+static void parse_expressao_simples_para_x3() {
+    parse_termo_para_x3();
+    while (currentToken->type == TOKEN_OP_SOMA || currentToken->type == TOKEN_OP_SUB) {
+        consume(currentToken->type);
+        parse_termo_para_x3();
+    }
+}
+
+static void parse_expressao_para_x3() {
+    parse_expressao_simples_para_x3();
+    while (currentToken->type == TOKEN_OP_IGUAL || currentToken->type == TOKEN_OP_DIF ||
+           currentToken->type == TOKEN_OP_MENOR || currentToken->type == TOKEN_OP_MENOR_IGUAL ||
+           currentToken->type == TOKEN_OP_MAIOR || currentToken->type == TOKEN_OP_MAIOR_IGUAL) {
+        consume(currentToken->type);
+        parse_expressao_simples_para_x3();
+    }
+    while (currentToken->type == TOKEN_OP_E || currentToken->type == TOKEN_OP_OU) {
+        consume(currentToken->type);
+        parse_expressao_simples_para_x3();
+    }
+}
+

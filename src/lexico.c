@@ -246,16 +246,19 @@ Token* get_next_token() {
             continue;
         }
 
-        if (is_special_char(current_file_content[current_pos]) &&
-            is_special_char(current_file_content[current_pos + 1]) &&
-            is_special_char(current_file_content[current_pos + 2])) {
-            char err_msg[100];
-            sprintf(err_msg, "ERRO: Sequência inválida de 3 ou mais caracteres especiais: %c%c%c",
-                    current_file_content[current_pos],
-                    current_file_content[current_pos + 1],
-                    current_file_content[current_pos + 2]);
+        
+
+        if (current_char == '+' && current_file_content[current_pos + 1] == '+' && current_file_content[current_pos + 2] == '+') {
             current_pos += 3;
-            return create_token(TOKEN_ERRO, my_strdup(err_msg));
+            return create_token(TOKEN_ERRO, my_strdup("Operador triplo inválido: +++"));
+        }
+        if (current_char == '-' && current_file_content[current_pos + 1] == '-' && current_file_content[current_pos + 2] == '-') {
+            current_pos += 3;
+            return create_token(TOKEN_ERRO, my_strdup("Operador triplo inválido: ---"));
+        }
+        if (current_char == '<' && current_file_content[current_pos + 1] == '>' && current_file_content[current_pos + 2] == '<') {
+            current_pos += 3;
+            return create_token(TOKEN_ERRO, my_strdup("Operador duplicado inválido: <><>"));
         }
 
         if (current_char == '_') { /* Função */

@@ -1,0 +1,25 @@
+principal() {
+    inteiro !i, !j, !k, !l;
+
+    escreva("Teste de incremento pos-fixado");
+    para (!i = 0; !i < 5; !i++) {
+        escreva("Valor de !i: ", !i);
+    }
+
+    escreva("Teste de incremento pre-fixado");
+    para (!j = 0; !j < 5; ++!j) {
+        escreva("Valor de !j: ", !j);
+    }
+
+    escreva("Teste de decremento pos-fixado");
+    para (!k = 5; !k > 0; !k--) {
+        escreva("Valor de !k: ", !k);
+    }
+
+    escreva("Teste de decremento pre-fixado");
+    para (!l = 5; !l > 0; --!l) {
+        escreva("Valor de !l: ", !l);
+    }
+
+    escreva("Teste concluido.");
+}
