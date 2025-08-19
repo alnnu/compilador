@@ -34,7 +34,6 @@ char* my_strndup(const char* s, size_t n) {
     return new_s;
 }
 
-// Helper para verificar se um caractere é especial para a regra de 3 caracteres seguidos
 int is_special_char(char c) {
     return (c == '!' || c == '=' || c == '+' || c == '-' ||
             c == '*' || c == '/' || c == '^' || c == '<' ||
@@ -153,7 +152,7 @@ int check_balance(const char* content) {
 }
 
 
-/* --- Analisador Léxico (Lexer) --- */
+/* --- Analisador Léxico --- */
 
 typedef enum {
     TOKEN_EOF, TOKEN_ERRO,
@@ -266,13 +265,12 @@ Token* get_next_token() {
     while (current_file_content[current_pos] != '\0') {
         char current_char = current_file_content[current_pos];
 
-        if (isspace(current_char)) {
+        if (isspace(current_char) || current_char == '\\') {
             if (current_char == '\n') current_line++;
             current_pos++;
             continue;
         }
 
-        // Verifica a regra de 3 caracteres especiais seguidos
         if (is_special_char(current_file_content[current_pos]) &&
             is_special_char(current_file_content[current_pos + 1]) &&
             is_special_char(current_file_content[current_pos + 2])) {
@@ -473,7 +471,7 @@ char* read_file_content(const char* filepath) {
 }
 
 int main(int argc, char *argv[]) {
-    const char* filepath = "programa.txt";
+    const char* filepath = "programa2.txt";
     if (argc > 1) {
         filepath = argv[1];
     }
