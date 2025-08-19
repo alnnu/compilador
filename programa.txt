@@ -13,5 +13,4 @@ principal() {
     para (!d = 1; !d <= 100; !d = !d + 2) {
         escreva("D", !d);
     }
-    
 }
