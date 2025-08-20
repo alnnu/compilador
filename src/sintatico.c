@@ -33,7 +33,7 @@ static void parse_termo_para_x3();
 static void parse_fator_para_x3();
 
 static void error(const char* message) {
-    printf("ERRO SINTÁTICO na linha %d: %s. Token inesperado: '%s' (%s)\n", 
+    printf("ERRO SINTÁTICO na linha %d: %s.", 
            currentToken->line, message, currentToken->value ? currentToken->value : "", 
            token_type_to_string(currentToken->type));
     syntax_error = 1;
@@ -58,9 +58,9 @@ void parse() {
     currentToken = get_next_token();
     parse_programa();
     if (!syntax_error && currentToken->type != TOKEN_EOF) {
-        error("Código extra encontrado após o final do programa.");
+        error("Código extra encontrado após o final do programa");
     }
-    printf("\nAnálise sintática concluída.\n");
+    printf("\nAnálise sintática concluída\n");
 }
 
 static void parse_programa() {
@@ -72,18 +72,18 @@ static void parse_programa() {
                 break;
             case TOKEN_PRINCIPAL:
                 if (principal_found) {
-                    error("Múltiplas definições do módulo principal.");
+                    error("Múltiplas definições do módulo principal");
                 }
                 parse_principal_def();
                 principal_found = 1;
                 break;
             default:
-                error("Esperava-se uma definição de função ou o módulo principal.");
+                error("Esperava-se uma definição de função ou o módulo principal");
                 return; /* Sai para evitar loop infinito */
         }
     }
     if (!principal_found) {
-        error("Módulo Principal Inexistente.");
+        error("Módulo Principal Inexistente");
     }
 }
 
@@ -152,7 +152,7 @@ static void parse_comando() {
             parse_retorno();
             break;
         default:
-            error("Comando inválido ou inesperado.");
+            error("Comando inválido ou inesperado");
             /* Avança para tentar recuperar, mas pode causar problemas */
             free_token(currentToken);
             currentToken = get_next_token();
@@ -165,7 +165,7 @@ static void parse_tipo() {
     if (currentToken->type == TOKEN_INTEIRO || currentToken->type == TOKEN_TEXTO || currentToken->type == TOKEN_DECIMAL) {
         consume(currentToken->type);
     } else {
-        error("Esperava-se um tipo de dado (inteiro, texto, decimal).");
+        error("Esperava-se um tipo de dado (inteiro, texto, decimal)");
     }
 }
 
@@ -185,7 +185,7 @@ static void parse_declaracao_variavel() {
             if (currentToken->type == TOKEN_LITERAL_INT || currentToken->type == TOKEN_LITERAL_DEC) {
                 consume(currentToken->type);
             } else {
-                error("Esperava-se um tamanho para o tipo de dado.");
+                error("Esperava-se um tamanho para o tipo de dado");
             }
             consume(TOKEN_RBRACKET);
         }
@@ -302,7 +302,7 @@ static void parse_fator() {
             consume(TOKEN_RPAREN);
             break;
         default:
-            error("Fator inválido em expressão.");
+            error("Fator inválido em expressão");
     }
 }
 
@@ -358,7 +358,7 @@ static void parse_fator_para_x3() {
             consume(TOKEN_RPAREN);
             break;
         default:
-            error("Fator inválido em expressão para x3 do para.");
+            error("Fator inválido em expressão para x3 do para");
     }
 
     /* Trata operadores de pós-incremento/decremento */
