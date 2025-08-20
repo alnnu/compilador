@@ -47,6 +47,11 @@ int is_special_char(char c) {
 long current_memory_used = 0;
 long max_memory_used = 0;
 
+static void error(const char* message) {
+    printf("ERRO LEXICO na linha %d: %s", current_line, message);
+    exit(1); /* Finaliza para evitar erros em cascata */
+}
+
 void* Malloc(size_t size) {
     if (current_memory_used + size > MAX_MEMORY_KB * 1024) {
         printf("ERRO: Memória Insuficiente.\n");
@@ -250,15 +255,15 @@ Token* get_next_token() {
 
         if (current_char == '+' && current_file_content[current_pos + 1] == '+' && current_file_content[current_pos + 2] == '+') {
             current_pos += 3;
-            return create_token(TOKEN_ERRO, my_strdup("Operador triplo inválido: +++"));
+            error("Operador triplo inválido: +++");
         }
         if (current_char == '-' && current_file_content[current_pos + 1] == '-' && current_file_content[current_pos + 2] == '-') {
             current_pos += 3;
-            return create_token(TOKEN_ERRO, my_strdup("Operador triplo inválido: ---"));
+            error("Operador triplo inválido: ---");
         }
         if (current_char == '<' && current_file_content[current_pos + 1] == '>' && current_file_content[current_pos + 2] == '<') {
             current_pos += 3;
-            return create_token(TOKEN_ERRO, my_strdup("Operador duplicado inválido: <><>"));
+            error("Operador duplicado inválido: <><>");
         }
 
         if (current_char == '_') { /* Função */
@@ -267,7 +272,7 @@ Token* get_next_token() {
                 current_pos += 2; /* Pula o '__' */
 
                 if (!isalnum(current_file_content[current_pos])) {
-                    return create_token(TOKEN_ERRO, my_strdup("Nome de função inválido: '__' deve ser seguido por um caractere alfanumérico."));
+                  error("Nome de função inválido: '__' deve ser seguido por um caractere alfanumérico.");
                 }
 
                 while (isalnum(current_file_content[current_pos])) {
@@ -289,7 +294,7 @@ Token* get_next_token() {
                 return create_token(keyword_token, value);
             }
             Free(value, strlen(value) + 1);
-            return create_token(TOKEN_ERRO, my_strdup("Identificador inválido (deve começar com '!' ou '__')"));
+            error("Identificador inválido (deve começar com '!' ou '__')");
         }
 
         if (isdigit(current_char)) { /* Número */
@@ -320,7 +325,7 @@ Token* get_next_token() {
                 current_pos++;
                 return create_token(TOKEN_LITERAL_TEXTO, value);
             }
-            return create_token(TOKEN_ERRO, my_strdup("String não terminada"));
+            error("string não terminada");
         }
 
         /* Operadores, Separadores e Variáveis */
@@ -328,7 +333,8 @@ Token* get_next_token() {
             case '!':
                 if (current_file_content[current_pos + 1] == '=') {
                     current_pos += 2;
-                    return create_token(TOKEN_ERRO, my_strdup("Operador inválido: !="));
+                
+                    error("Operador inválido: !=");
                 }
                 int start = current_pos;
                 current_pos++;
@@ -340,7 +346,7 @@ Token* get_next_token() {
                     char* value = my_strndup(&current_file_content[start], current_pos - start);
                     return create_token(TOKEN_ID_VAR, value);
                 }
-                return create_token(TOKEN_ERRO, my_strdup("Nome de variável inválido"));
+                error("Nome de variável inválido");
             case '+':
                 if (current_file_content[current_pos + 1] == '+') {
                     current_pos += 2;
@@ -362,7 +368,7 @@ Token* get_next_token() {
                 }
                  if (current_file_content[current_pos + 1] == '<' || current_file_content[current_pos + 1] == '>') {
                     current_pos += 2;
-                    return create_token(TOKEN_ERRO, my_strdup("Operador invertido inválido"));
+                    error("Operador invertido inválido");
                 }
                 current_pos++;
                 return create_token(TOKEN_OP_ATRIB, my_strdup("="));
@@ -377,7 +383,7 @@ Token* get_next_token() {
                 }
                  if (current_file_content[current_pos + 1] == '<') {
                     current_pos += 2;
-                    return create_token(TOKEN_ERRO, my_strdup("Operador duplicado inválido: <<"));
+                    error("Operador duplicado inválido: <<");
                 }
                 current_pos++;
                 return create_token(TOKEN_OP_MENOR, my_strdup("<"));
@@ -388,7 +394,7 @@ Token* get_next_token() {
                 }
                 if (current_file_content[current_pos + 1] == '>' || current_file_content[current_pos + 1] == '<') {
                     current_pos += 2;
-                    return create_token(TOKEN_ERRO, my_strdup("Operador duplicado/invertido inválido"));
+                    error("Operador duplicado/invertido inválido");
                 }
                 current_pos++;
                 return create_token(TOKEN_OP_MAIOR, my_strdup(">"));
@@ -422,7 +428,7 @@ Token* get_next_token() {
         char err_msg[100];
         sprintf(err_msg, "Caractere ou sequência inesperada começando com: %c", current_char);
         current_pos++;
-        return create_token(TOKEN_ERRO, my_strdup(err_msg));
+        error(err_msg);
     }
     return create_token(TOKEN_EOF, NULL);
 }
