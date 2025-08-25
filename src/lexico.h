@@ -13,5 +13,6 @@ void init_lexico(const char* filepath);
 Token* get_next_token();
 void free_token(Token* token);
 const char* token_type_to_string(TokenType type);
+char* my_strdup(const char* s);
 
 #endif

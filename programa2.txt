@@ -1,15 +1,14 @@
-funcao __soma(inteiro !a, inteiro !b) {
-    retorno !a + !b;
+funcao __somainteiro(inteiro !a, inteiro !b) {
+    retorno !a ;
 }
 
 funcao __vazia() {
     escreva("Função vazia chamada");
 }
 
-funcao __principa() {
+funcao __principal() {
     inteiro !x = 10;
-    inteiro !y = 20;
-    inteiro !resultado;
+    inteiro !y
 
     !resultado = __soma(!x, !y);
 
@@ -18,5 +17,4 @@ funcao __principa() {
     !x ++;
     !x <= !y;
     !x >= !y;
-    +++
 }
