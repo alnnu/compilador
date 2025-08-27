@@ -310,7 +310,8 @@ Token* get_next_token() {
                     current_pos++;
                 }
                 char* value = my_strndup(&current_file_content[start], current_pos - start);
-                return create_token(TOKEN_ID_FUNC, value);
+                Token* token = create_token(TOKEN_ID_FUNC, value);
+                return token;
             }
         }
 
@@ -322,7 +323,8 @@ Token* get_next_token() {
             char* value = my_strndup(&current_file_content[start], current_pos - start);
             int keyword_token = is_keyword(value);
             if (keyword_token) {
-                return create_token(keyword_token, value);
+                Token* token = create_token(keyword_token, value);
+                return token;
             }
             Free(value, strlen(value) + 1);
             error("Identificador inválido (deve começar com '!' ou '__')");
@@ -342,7 +344,8 @@ Token* get_next_token() {
                 }
             }
             char* value = my_strndup(&current_file_content[start], current_pos - start);
-            return create_token(is_decimal ? TOKEN_LITERAL_DEC : TOKEN_LITERAL_INT, value);
+            Token* token = create_token(is_decimal ? TOKEN_LITERAL_DEC : TOKEN_LITERAL_INT, value);
+            return token;
         }
 
         if (current_char == '"') { /* String literal */
@@ -354,7 +357,8 @@ Token* get_next_token() {
             if (current_file_content[current_pos] == '"') {
                 char* value = my_strndup(&current_file_content[start], current_pos - start);
                 current_pos++;
-                return create_token(TOKEN_LITERAL_TEXTO, value);
+                Token* token = create_token(TOKEN_LITERAL_TEXTO, value);
+                return token;
             }
             error("string não terminada");
         }
@@ -375,67 +379,80 @@ Token* get_next_token() {
                         current_pos++;
                     }
                     char* value = my_strndup(&current_file_content[start], current_pos - start);
-                    return create_token(TOKEN_ID_VAR, value);
+                    Token* token = create_token(TOKEN_ID_VAR, value);
+                    return token;
                 }
                 error("Nome de variável inválido");
             case '+':
                 if (current_file_content[current_pos + 1] == '+') {
                     current_pos += 2;
-                    return create_token(TOKEN_OP_INC, my_strdup("++"));
+                    Token* token = create_token(TOKEN_OP_INC, my_strdup("++"));
+                    return token;
                 }
                 current_pos++;
-                return create_token(TOKEN_OP_SOMA, my_strdup("+"));
+                Token* token_soma = create_token(TOKEN_OP_SOMA, my_strdup("+"));
+                return token_soma;
             case '-':
                 if (current_file_content[current_pos + 1] == '-') {
                     current_pos += 2;
-                    return create_token(TOKEN_OP_DEC, my_strdup("--"));
+                    Token* token = create_token(TOKEN_OP_DEC, my_strdup("--"));
+                    return token;
                 }
                 current_pos++;
-                return create_token(TOKEN_OP_SUB, my_strdup("-"));
+                Token* token_sub = create_token(TOKEN_OP_SUB, my_strdup("-"));
+                return token_sub;
             case '=':
                 if (current_file_content[current_pos + 1] == '=') {
                     current_pos += 2;
-                    return create_token(TOKEN_OP_IGUAL, my_strdup("=="));
+                    Token* token = create_token(TOKEN_OP_IGUAL, my_strdup("=="));
+                    return token;
                 }
                  if (current_file_content[current_pos + 1] == '<' || current_file_content[current_pos + 1] == '>') {
                     current_pos += 2;
                     error("Operador invertido inválido");
                 }
                 current_pos++;
-                return create_token(TOKEN_OP_ATRIB, my_strdup("="));
+                Token* token_atrib = create_token(TOKEN_OP_ATRIB, my_strdup("="));
+                return token_atrib;
             case '<':
                 if (current_file_content[current_pos + 1] == '=') {
                     current_pos += 2;
-                    return create_token(TOKEN_OP_MENOR_IGUAL, my_strdup("<="));
+                    Token* token = create_token(TOKEN_OP_MENOR_IGUAL, my_strdup("<="));
+                    return token;
                 }
                 if (current_file_content[current_pos + 1] == '>') {
                     current_pos += 2;
-                    return create_token(TOKEN_OP_DIF, my_strdup("<>"));
+                    Token* token = create_token(TOKEN_OP_DIF, my_strdup("<>"));
+                    return token;
                 }
                  if (current_file_content[current_pos + 1] == '<') {
                     current_pos += 2;
                     error("Operador duplicado inválido: <<");
                 }
                 current_pos++;
-                return create_token(TOKEN_OP_MENOR, my_strdup("<"));
+                Token* token_menor = create_token(TOKEN_OP_MENOR, my_strdup("<"));
+                return token_menor;
             case '>':
                 if (current_file_content[current_pos + 1] == '=') {
                     current_pos += 2;
-                    return create_token(TOKEN_OP_MAIOR_IGUAL, my_strdup(">="));
+                    Token* token = create_token(TOKEN_OP_MAIOR_IGUAL, my_strdup(">="));
+                    return token;
                 }
                 if (current_file_content[current_pos + 1] == '>' || current_file_content[current_pos + 1] == '<') {
                     current_pos += 2;
                     error("Operador duplicado/invertido inválido");
                 }
                 current_pos++;
-                return create_token(TOKEN_OP_MAIOR, my_strdup(">"));
+                Token* token_maior = create_token(TOKEN_OP_MAIOR, my_strdup(">"));
+                return token_maior;
             case '&':
                 if (current_file_content[current_pos + 1] == '&') {
                     if (!isspace(current_file_content[current_pos - 1]) || !isspace(current_file_content[current_pos + 2])) {
                         error("Operador lógico '&&' deve ser cercado por espaços.");
                     }
                     current_pos += 2;
-                    return create_token(TOKEN_OP_E, my_strdup("&&"));
+                    Token* token = create_token(TOKEN_OP_E, my_strdup("&&"));
+                    return token;
                 }
                 break;
             case '|':
@@ -444,21 +461,22 @@ Token* get_next_token() {
                         error("Operador lógico '||' deve ser cercado por espaços.");
                     }
                     current_pos += 2;
-                    return create_token(TOKEN_OP_OU, my_strdup("||"));
+                    Token* token = create_token(TOKEN_OP_OU, my_strdup("||"));
+                    return token;
                 }
                 break;
-            case '*': current_pos++; return create_token(TOKEN_OP_MULT, my_strdup("*"));
-            case '/': current_pos++; return create_token(TOKEN_OP_DIV, my_strdup("/"));
-            case '^': current_pos++; return create_token(TOKEN_OP_EXP, my_strdup("^"));
-            case '(': current_pos++; return create_token(TOKEN_LPAREN, my_strdup("("));
-            case ')': current_pos++; return create_token(TOKEN_RPAREN, my_strdup(")"));
-            case '{': current_pos++; return create_token(TOKEN_LBRACE, my_strdup("{"));
-            case '}': current_pos++; return create_token(TOKEN_RBRACE, my_strdup("}"));
-            case '[': current_pos++; return create_token(TOKEN_LBRACKET, my_strdup("["));
-            case ']': current_pos++; return create_token(TOKEN_RBRACKET, my_strdup("]"));
-            case ',': current_pos++; return create_token(TOKEN_VIRGULA, my_strdup(","));
-            case ';': current_pos++; return create_token(TOKEN_PONTO_VIRGULA, my_strdup(";"));
-            case '.': current_pos++; return create_token(TOKEN_PONTO, my_strdup("."));
+            case '*': current_pos++; Token* token_mult = create_token(TOKEN_OP_MULT, my_strdup("*")); return token_mult;
+            case '/': current_pos++; Token* token_div = create_token(TOKEN_OP_DIV, my_strdup("/")); return token_div;
+            case '^': current_pos++; Token* token_exp = create_token(TOKEN_OP_EXP, my_strdup("^")); return token_exp;
+            case '(': current_pos++; Token* token_lparen = create_token(TOKEN_LPAREN, my_strdup("(")); return token_lparen;
+            case ')': current_pos++; Token* token_rparen = create_token(TOKEN_RPAREN, my_strdup(")")); return token_rparen;
+            case '{': current_pos++; Token* token_lbrace = create_token(TOKEN_LBRACE, my_strdup("{")); return token_lbrace;
+            case '}': current_pos++; Token* token_rbrace = create_token(TOKEN_RBRACE, my_strdup("}")); return token_rbrace;
+            case '[': current_pos++; Token* token_lbracket = create_token(TOKEN_LBRACKET, my_strdup("[")); return token_lbracket;
+            case ']': current_pos++; Token* token_rbracket = create_token(TOKEN_RBRACKET, my_strdup("]")); return token_rbracket;
+            case ',': current_pos++; Token* token_virgula = create_token(TOKEN_VIRGULA, my_strdup(",")); return token_virgula;
+            case ';': current_pos++; Token* token_ponto_virgula = create_token(TOKEN_PONTO_VIRGULA, my_strdup(";")); return token_ponto_virgula;
+            case '.': current_pos++; Token* token_ponto = create_token(TOKEN_PONTO, my_strdup(".")); return token_ponto;
         }
 
         /* Se chegou aqui, é um caractere inválido */

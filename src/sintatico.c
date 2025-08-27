@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h> /* Added for isdigit */
 #include "sintatico.h" 
 #include "lexico.h"
 
@@ -19,8 +20,8 @@ static void parse_comando_leia();
 static void parse_comando_escreva();
 static void parse_retorno();
 static TokenType parse_expressao();
-static TokenType parse_logical_and_expression(); /* New prototype */
-static TokenType parse_relational_expression(); /* New prototype */
+static TokenType parse_logical_and_expression();
+static TokenType parse_relational_expression();
 static TokenType parse_expressao_simples();
 static TokenType parse_termo();
 static TokenType parse_fator();
@@ -51,10 +52,15 @@ typedef struct {
     char* name;
     TokenType type;
     char* scope;
+    TokenType return_type; /* For functions: stores the inferred return type */
+    int has_return_statement; /* For functions: flag if a return statement was found */
+    char* initial_value_str; /* New field for "Possible Value" */
 } Symbol;
 
 Symbol symbol_table[MAX_SYMBOLS];
 int symbol_count = 0;
+
+static Symbol* current_function_symbol = NULL; /* Points to the symbol table entry of the function currently being parsed */
 
 Symbol* find_symbol(const char* name) {
     int i;
@@ -73,6 +79,9 @@ void add_symbol(const char* name, TokenType type, const char* scope) {
         symbol_table[symbol_count].name = my_strdup(name);
         symbol_table[symbol_count].type = type;
         symbol_table[symbol_count].scope = my_strdup(scope);
+        symbol_table[symbol_count].return_type = TOKEN_ERRO; /* Initialize for functions */
+        symbol_table[symbol_count].has_return_statement = 0; /* Initialize for functions */
+        symbol_table[symbol_count].initial_value_str = NULL; /* Initialize new field */
         symbol_count++;
     } else {
         error("Estouro da tabela de símbolos.");
@@ -101,6 +110,28 @@ static void parse_tipo() {
     }
 }
 
+/* Helper function to validate decimal size format [int.int] */
+static int validate_decimal_size_format(const char* value) {
+    int dot_count = 0;
+    int i;
+    for (i = 0; value[i] != '\0'; i++) {
+        if (value[i] == '.') {
+            dot_count++;
+        } else if (!isdigit(value[i])) {
+            return 0; /* Not a digit or dot */
+        }
+    }
+    if (dot_count != 1) {
+        return 0; /* Must have exactly one dot */
+    }
+    /* Further check: ensure there are digits before and after the dot */
+    char* dot_pos = strchr(value, '.');
+    if (dot_pos == value || *(dot_pos + 1) == '\0') {
+        return 0; /* No digits before or after dot */
+    }
+    return 1; /* Format seems valid */
+}
+
 static void parse_declaracao_variavel() {
     if (in_se_senao_block) {
         error("Declaração de variável não permitida dentro de um bloco se/senao.");
@@ -119,17 +150,37 @@ static void parse_declaracao_variavel() {
             sprintf(msg, "Variável '%s' já declarada neste escopo.", var_name);
             semantic_alert(msg);
         }
-        add_symbol(var_name, type, current_scope); /* 'type' is the type of the declaration (TOKEN_TEXTO) */
+        add_symbol(var_name, type, current_scope); /* Add symbol first */
+
+        Symbol* added_var_symbol = find_symbol(var_name); /* Retrieve the newly added symbol */
+
         consume(TOKEN_ID_VAR); /* Consumes !a or !b */
         
         if (currentToken->type == TOKEN_OP_ATRIB) {
             consume(TOKEN_OP_ATRIB);
-            TokenType expr_type = parse_expressao();
+            char* assigned_literal_value = NULL;
+            /* Check if the next token is a literal before parsing the expression */
+            if (currentToken->type == TOKEN_LITERAL_INT ||
+                currentToken->type == TOKEN_LITERAL_DEC ||
+                currentToken->type == TOKEN_LITERAL_TEXTO) {
+                assigned_literal_value = my_strdup(currentToken->value);
+            }
+
+            TokenType expr_type = parse_expressao(); /* This will consume the literal if it was one */
+
             if (type != expr_type) {
                 char msg[256];
                 sprintf(msg, "Atribuição de tipo incompatível para a variável '%s'. Esperado %s, obteve %s.", 
                         var_name, token_type_to_string(type), token_type_to_string(expr_type));
                 semantic_alert(msg);
+            }
+
+            /* Store the initial value string in the symbol table entry */
+            if (added_var_symbol != NULL) {
+                added_var_symbol->initial_value_str = assigned_literal_value;
+            } else {
+                /* This case should ideally not happen if add_symbol worked correctly */
+                if (assigned_literal_value) free(assigned_literal_value);
             }
         }
 
@@ -142,9 +193,9 @@ static void parse_declaracao_variavel() {
                         semantic_alert("Tamanho de texto deve ser maior ou igual a um.");
                     }
                 } else if (type == TOKEN_DECIMAL) {
-                    /* TODO: Implement semantic check for decimal size format [int.int] */
-                    /* For now, just consume the literal */
-                    semantic_alert("Validação do formato de tamanho para decimal [int.int] pendente.");
+                    if (!validate_decimal_size_format(currentToken->value)) {
+                        semantic_alert("Formato de tamanho para decimal inválido. Esperado [inteiro.inteiro].");
+                    }
                 }
                 consume(currentToken->type);
             } else {
@@ -380,8 +431,7 @@ static void parse_comando_para() {
 
     if (currentToken->type == TOKEN_LBRACE) {
         parse_bloco();
-    }
-    else {
+    } else {
         parse_comando();
     }
 }
@@ -420,7 +470,16 @@ static void parse_comando_escreva() {
 
 static void parse_retorno() {
     consume(TOKEN_RETORNO);
-        parse_expressao(); /* O tipo de retorno deve ser verificado contra o tipo da função */
+    TokenType expr_type = parse_expressao(); /* O tipo de retorno deve ser verificado contra o tipo da função */
+
+    if (current_function_symbol != NULL) {
+        current_function_symbol->has_return_statement = 1;
+        if (current_function_symbol->return_type == TOKEN_ERRO) {
+            current_function_symbol->return_type = expr_type;
+        } else if (current_function_symbol->return_type != expr_type) {
+            semantic_alert("Tipo de retorno inconsistente com retornos anteriores da função.");
+        }
+    }
     consume(TOKEN_PONTO_VIRGULA);
 }
 
@@ -452,6 +511,19 @@ static void parse_comando() {
                 consume(TOKEN_PONTO_VIRGULA);
             }
             break;
+        case TOKEN_ID_FUNC: /* New case for function calls as commands */
+            consume(TOKEN_ID_FUNC);
+            consume(TOKEN_LPAREN);
+            if (currentToken->type != TOKEN_RPAREN) {
+                parse_expressao(); /* Parse first argument */
+                while (currentToken->type == TOKEN_VIRGULA) {
+                    consume(TOKEN_VIRGULA);
+                    parse_expressao(); /* Parse subsequent arguments */
+                }
+            }
+            consume(TOKEN_RPAREN);
+            consume(TOKEN_PONTO_VIRGULA);
+            break;
         case TOKEN_SE:
             parse_comando_se();
             break;
@@ -477,8 +549,19 @@ static void parse_comando() {
 
 static void parse_funcao_def() {
     char* previous_scope = current_scope;
+    Symbol* previous_function_symbol = current_function_symbol; /* Save previous function context */
+
     consume(TOKEN_FUNCAO);
     current_scope = my_strdup(currentToken->value);
+    
+    /* Find or add function to symbol table */
+    Symbol* func_symbol = find_symbol(current_scope); /* Check if function already exists (forward declaration) */
+    if (func_symbol == NULL) {
+        add_symbol(current_scope, TOKEN_FUNCAO, "global"); /* Functions are global scope */
+        func_symbol = find_symbol(current_scope); /* Retrieve the newly added symbol */
+    }
+    current_function_symbol = func_symbol; /* Set current function context */
+
     consume(TOKEN_ID_FUNC);
     consume(TOKEN_LPAREN);
     if (currentToken->type != TOKEN_RPAREN) {
@@ -496,18 +579,31 @@ static void parse_funcao_def() {
     }
     consume(TOKEN_RPAREN);
     parse_bloco();
+
+    /* Check for mandatory return statement */
+    if (current_function_symbol->has_return_statement == 0) {
+        semantic_alert("Função não possui uma declaração de retorno.");
+    }
+
     free(current_scope);
     current_scope = previous_scope;
+    current_function_symbol = previous_function_symbol; /* Restore previous function context */
 }
 
 static void parse_principal_def() {
     char* previous_scope = current_scope;
+    Symbol* previous_function_symbol = current_function_symbol; /* Save previous function context */
+
     current_scope = "principal";
+    /* Principal is a special function, no need to add to symbol table as a regular function */
+    current_function_symbol = NULL; /* No return type check for principal */
+
     consume(TOKEN_PRINCIPAL);
     consume(TOKEN_LPAREN);
     consume(TOKEN_RPAREN);
     parse_bloco();
     current_scope = previous_scope;
+    current_function_symbol = previous_function_symbol; /* Restore previous function context */
 }
 
 static void parse_programa() {

@@ -1,0 +1,4 @@
+principal() {
+    decimal !d7[1.2.3];
+    decimal !d8[abc];
+}

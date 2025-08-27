@@ -1,0 +1,19 @@
+funcao __testFunc1() {
+    inteiro !a;
+    !a = 10;
+}
+
+funcao __testFunc2() {
+    retorno 1;
+}
+
+funcao __testFunc3() {
+    retorno 1;
+    retorno 2.5;
+}
+
+principal() {
+    __testFunc1();
+    __testFunc2();
+    __testFunc3();
+}

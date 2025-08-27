@@ -1,0 +1,10 @@
+principal() {
+    decimal !d1[1.2];
+    decimal !d2[10.0];
+    decimal !d3[0.5];
+    decimal !d4[1]; 
+    decimal !d5[1.];
+    decimal !d6[.2];
+    decimal !d7[1.2.3];
+    decimal !d8[abc];
+}
