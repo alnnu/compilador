@@ -28,8 +28,6 @@ o se()
 ▪ senao
 o para()
 
-•
-
 Tipos de Dados
 o inteiro
 o texto

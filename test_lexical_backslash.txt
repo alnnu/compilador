@@ -1,0 +1,4 @@
+principal() {
+    inteiro !a;
+    !a = 10\;
+}

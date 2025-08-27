@@ -1,0 +1,7 @@
+principal() {
+    inteiro !a;
+    texto !b;
+    se (!a < !b) {
+        escreva("teste");
+    }
+}

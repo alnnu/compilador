@@ -1,88 +1,85 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include "sintatico.h" 
 #include "lexico.h"
 
-static Token* currentToken;
-static int syntax_error = 0;
-static int in_se_senao_block = 0;
-
-
-
+/* --- Protótipos --- */
 static void parse_programa();
 static void parse_declaracao_variavel();
 static void parse_funcao_def();
 static void parse_principal_def();
 static void parse_bloco();
 static void parse_comando();
-static void parse_atribuicao_sem_pv();
-static void parse_tipo();
 static void parse_atribuicao();
+static void parse_tipo();
 static void parse_comando_se();
 static void parse_comando_para();
 static void parse_comando_leia();
 static void parse_comando_escreva();
 static void parse_retorno();
-static void parse_expressao();
-static void parse_expressao_simples();
-static void parse_termo();
-static void parse_fator();
-static void parse_expressao_para_x3();
-static void parse_expressao_simples_para_x3();
-static void parse_termo_para_x3();
-static void parse_fator_para_x3();
+static TokenType parse_expressao();
+static TokenType parse_logical_and_expression(); /* New prototype */
+static TokenType parse_relational_expression(); /* New prototype */
+static TokenType parse_expressao_simples();
+static TokenType parse_termo();
+static TokenType parse_fator();
+
+
+static Token* currentToken;
+static int syntax_error = 0;
+static int in_se_senao_block = 0;
+static char* current_scope = "global";
+
+/* --- Funções de erro e Tabela de Símbolos --- */
 
 static void error(const char* message) {
     printf("ERRO SINTÁTICO na linha %d: %s. Token inesperado: '%s' (%s)\n", 
            currentToken->line, message, currentToken->value ? currentToken->value : "", 
            token_type_to_string(currentToken->type));
     syntax_error = 1;
-    /* Tenta continuar para encontrar mais erros, mas para em caso de erro grave. */
-    /* Em um compilador real, a recuperação de erros seria mais sofisticada. */
-    exit(1); /* Finaliza para evitar erros em cascata */
+    exit(1);
 }
 
-/* --- Tabela de Símbolos --- */
+static void semantic_alert(const char* message) {
+    printf("ALERTA SEMÂNTICO na linha %d: %s\n", currentToken->line, message);
+}
 
 #define MAX_SYMBOLS 1024
 
 typedef struct {
     char* name;
     TokenType type;
+    char* scope;
 } Symbol;
 
 Symbol symbol_table[MAX_SYMBOLS];
 int symbol_count = 0;
 
-Symbol* find_symbol(const char* name);
-
-void add_symbol(const char* name, TokenType type) {
-    if (find_symbol(name) != NULL) {
-        char msg[256];
-        sprintf(msg, "Variável '%s' já declarada.", name);
-        error(msg);
+Symbol* find_symbol(const char* name) {
+    int i;
+    for (i = symbol_count - 1; i >= 0; i--) {
+        if (strcmp(symbol_table[i].name, name) == 0) {
+            if (strcmp(symbol_table[i].scope, current_scope) == 0 || strcmp(symbol_table[i].scope, "global") == 0) {
+                return &symbol_table[i];
+            }
+        }
     }
+    return NULL;
+}
+
+void add_symbol(const char* name, TokenType type, const char* scope) {
     if (symbol_count < MAX_SYMBOLS) {
         symbol_table[symbol_count].name = my_strdup(name);
         symbol_table[symbol_count].type = type;
+        symbol_table[symbol_count].scope = my_strdup(scope);
         symbol_count++;
     } else {
         error("Estouro da tabela de símbolos.");
     }
 }
 
-Symbol* find_symbol(const char* name) {
-    int i;
-    for (i = 0; i < symbol_count; i++) {
-        if (strcmp(symbol_table[i].name, name) == 0) {
-            return &symbol_table[i];
-        }
-    }
-    return NULL;
-}
+/* --- Funções de Parsing --- */
 
 static void consume(TokenType type) {
     if (syntax_error) return;
@@ -96,66 +93,335 @@ static void consume(TokenType type) {
     }
 }
 
-void parse() {
-    currentToken = get_next_token();
-    parse_programa();
-    if (!syntax_error && currentToken->type != TOKEN_EOF) {
-        error("Código extra encontrado após o final do programa.");
-    }
-    printf("\nAnálise sintática concluída.\n");
-}
-
-static void parse_programa() {
-    int principal_found = 0;
-    while (currentToken->type != TOKEN_EOF && !syntax_error) {
-        switch (currentToken->type) {
-            case TOKEN_FUNCAO:
-                parse_funcao_def();
-                break;
-            case TOKEN_PRINCIPAL:
-                if (principal_found) {
-                    error("Múltiplas definições do módulo principal.");
-                }
-                parse_principal_def();
-                principal_found = 1;
-                break;
-            default:
-                error("Esperava-se uma definição de função ou o módulo principal.");
-                return; /* Sai para evitar loop infinito */
-        }
-    }
-    if (!principal_found) {
-        error("Módulo Principal Inexistente.");
+static void parse_tipo() {
+    if (currentToken->type == TOKEN_INTEIRO || currentToken->type == TOKEN_TEXTO || currentToken->type == TOKEN_DECIMAL) {
+        /* O tipo é consumido pela função que chama parse_tipo */
+    } else {
+        error("Esperava-se um tipo de dado (inteiro, texto, decimal).");
     }
 }
 
-static void parse_funcao_def() {
-    consume(TOKEN_FUNCAO);
-    consume(TOKEN_ID_FUNC);
-    consume(TOKEN_LPAREN);
-    /* Lógica para parâmetros */
-    if (currentToken->type != TOKEN_RPAREN) {
-        TokenType type = currentToken->type;
-        parse_tipo(); /* First parameter type */
-        add_symbol(currentToken->value, type);
-        consume(TOKEN_ID_VAR); /* First parameter name */
-        while (currentToken->type == TOKEN_VIRGULA) {
+static void parse_declaracao_variavel() {
+    if (in_se_senao_block) {
+        error("Declaração de variável não permitida dentro de um bloco se/senao.");
+    }
+    TokenType type = currentToken->type; /* This 'type' should be TOKEN_TEXTO */
+    consume(type); /* Consumes TOKEN_TEXTO */
+
+    do {
+        if (currentToken->type == TOKEN_VIRGULA) {
             consume(TOKEN_VIRGULA);
-            type = currentToken->type;
-            parse_tipo(); /* Subsequent parameter type */
-            add_symbol(currentToken->value, type);
-            consume(TOKEN_ID_VAR); /* Subsequent parameter name */
         }
-    }
-    consume(TOKEN_RPAREN);
-    parse_bloco();
+
+        char* var_name = my_strdup(currentToken->value);
+        if (find_symbol(var_name) != NULL && strcmp(find_symbol(var_name)->scope, current_scope) == 0) {
+            char msg[256];
+            sprintf(msg, "Variável '%s' já declarada neste escopo.", var_name);
+            semantic_alert(msg);
+        }
+        add_symbol(var_name, type, current_scope); /* 'type' is the type of the declaration (TOKEN_TEXTO) */
+        consume(TOKEN_ID_VAR); /* Consumes !a or !b */
+        
+        if (currentToken->type == TOKEN_OP_ATRIB) {
+            consume(TOKEN_OP_ATRIB);
+            TokenType expr_type = parse_expressao();
+            if (type != expr_type) {
+                char msg[256];
+                sprintf(msg, "Atribuição de tipo incompatível para a variável '%s'. Esperado %s, obteve %s.", 
+                        var_name, token_type_to_string(type), token_type_to_string(expr_type));
+                semantic_alert(msg);
+            }
+        }
+
+        if (currentToken->type == TOKEN_LBRACKET) {
+            consume(TOKEN_LBRACKET);
+            if (currentToken->type == TOKEN_LITERAL_INT || currentToken->type == TOKEN_LITERAL_DEC) {
+                if (type == TOKEN_TEXTO) {
+                    int size_val = atoi(currentToken->value); /* Assuming integer literal for size */
+                    if (size_val < 1) {
+                        semantic_alert("Tamanho de texto deve ser maior ou igual a um.");
+                    }
+                } else if (type == TOKEN_DECIMAL) {
+                    /* TODO: Implement semantic check for decimal size format [int.int] */
+                    /* For now, just consume the literal */
+                    semantic_alert("Validação do formato de tamanho para decimal [int.int] pendente.");
+                }
+                consume(currentToken->type);
+            } else {
+                error("Esperava-se um tamanho para o tipo de dado.");
+            }
+            consume(TOKEN_RBRACKET);
+        }
+        free(var_name);
+    } while (currentToken->type == TOKEN_VIRGULA);
+
+    consume(TOKEN_PONTO_VIRGULA);
 }
 
-static void parse_principal_def() {
-    consume(TOKEN_PRINCIPAL);
+static void parse_atribuicao() {
+    Symbol* var = find_symbol(currentToken->value);
+    if (var == NULL) {
+        char msg[256];
+        sprintf(msg, "Variável '%s' não declarada.", currentToken->value);
+        semantic_alert(msg);
+        consume(TOKEN_ID_VAR);
+        consume(TOKEN_OP_ATRIB);
+        parse_expressao();
+        consume(TOKEN_PONTO_VIRGULA);
+        return;
+    }
+    
+    consume(TOKEN_ID_VAR);
+    consume(TOKEN_OP_ATRIB);
+    TokenType expr_type = parse_expressao();
+
+    if (var->type != expr_type) {
+        char msg[256];
+        sprintf(msg, "Atribuição de tipo incompatível para a variável '%s'. Esperado %s, obteve %s.", 
+                var->name, token_type_to_string(var->type), token_type_to_string(expr_type));
+        semantic_alert(msg);
+    }
+    consume(TOKEN_PONTO_VIRGULA);
+}
+
+static TokenType parse_fator() {
+    TokenType type = TOKEN_ERRO;
+    switch (currentToken->type) {
+        case TOKEN_LITERAL_INT:
+            type = TOKEN_INTEIRO;
+            consume(TOKEN_LITERAL_INT);
+            break;
+        case TOKEN_LITERAL_DEC:
+            type = TOKEN_DECIMAL;
+            consume(TOKEN_LITERAL_DEC);
+            break;
+        case TOKEN_LITERAL_TEXTO:
+            type = TOKEN_TEXTO;
+            consume(TOKEN_LITERAL_TEXTO);
+            break;
+        case TOKEN_ID_VAR: {
+            Symbol* var = find_symbol(currentToken->value);
+            if (var == NULL) {
+                char msg[256];
+                sprintf(msg, "Variável '%s' não declarada.", currentToken->value);
+                semantic_alert(msg);
+                type = TOKEN_ERRO; /* Assume erro se não declarada */
+            } else {
+                type = var->type;
+            }
+            consume(TOKEN_ID_VAR);
+            break;
+        }
+        case TOKEN_ID_FUNC:
+            /* A ser implementado: buscar tipo de retorno da função */
+            type = TOKEN_INTEIRO; /* Placeholder */
+            consume(TOKEN_ID_FUNC);
+            consume(TOKEN_LPAREN);
+            if (currentToken->type != TOKEN_RPAREN) {
+                parse_expressao();
+                while (currentToken->type == TOKEN_VIRGULA) {
+                    consume(TOKEN_VIRGULA);
+                    parse_expressao();
+                }
+            }
+            consume(TOKEN_RPAREN);
+            break;
+        case TOKEN_LPAREN:
+            consume(TOKEN_LPAREN);
+            type = parse_expressao();
+            consume(TOKEN_RPAREN);
+            break;
+        default:
+            error("Fator inválido em expressão.");
+    }
+    return type;
+}
+
+static TokenType parse_termo() {
+    TokenType type = parse_fator();
+    while (currentToken->type == TOKEN_OP_MULT || currentToken->type == TOKEN_OP_DIV || currentToken->type == TOKEN_OP_EXP) {
+        Token* op = currentToken;
+        consume(op->type);
+        TokenType right_type = parse_fator();
+        if (type != right_type) {
+            semantic_alert("Operação com tipos incompatíveis.");
+            type = TOKEN_ERRO;
+        }
+        /* Lógica adicional para determinar o tipo resultante (ex: int * dec -> dec) */
+    }
+    return type;
+}
+
+static TokenType parse_expressao_simples() {
+    TokenType type = parse_termo();
+    while (currentToken->type == TOKEN_OP_SOMA || currentToken->type == TOKEN_OP_SUB) {
+        Token* op = currentToken;
+        consume(op->type);
+        TokenType right_type = parse_termo();
+        if (type != right_type) {
+            semantic_alert("Operação com tipos incompatíveis.");
+            type = TOKEN_ERRO;
+        }
+        /* Lógica adicional para determinar o tipo resultante (ex: int * dec -> dec) */
+    }
+    return type;
+}
+
+/* New function for relational expressions */
+static TokenType parse_relational_expression() {
+    TokenType type = parse_expressao_simples(); /* Left operand of relational expression */
+
+    /* Check for a relational operator */
+    if (currentToken->type == TOKEN_OP_IGUAL || currentToken->type == TOKEN_OP_DIF ||
+        currentToken->type == TOKEN_OP_MENOR || currentToken->type == TOKEN_OP_MENOR_IGUAL ||
+        currentToken->type == TOKEN_OP_MAIOR || currentToken->type == TOKEN_OP_MAIOR_IGUAL) {
+
+        TokenType op_type = currentToken->type; /* Store the type of the operator */
+        consume(op_type); /* Consume using the stored type */
+        TokenType right_type = parse_expressao_simples(); /* Right operand of relational expression */
+
+        /* Perform semantic checks */
+        if (type == TOKEN_TEXTO && (op_type == TOKEN_OP_MENOR || op_type == TOKEN_OP_MENOR_IGUAL || op_type == TOKEN_OP_MAIOR || op_type == TOKEN_OP_MAIOR_IGUAL)) {
+            semantic_alert("Operador relacional inválido para o tipo texto.");
+        }
+        if (type != right_type) {
+            semantic_alert("Comparação com tipos incompatíveis.");
+        }
+        type = TOKEN_INTEIRO; /* Relational expressions result in booleano (inteiro 0 or 1) */
+    }
+    return type;
+}
+
+/* New function for logical AND expressions */
+static TokenType parse_logical_and_expression() {
+    TokenType type = parse_relational_expression(); /* Left operand of logical AND expression */
+    while (currentToken->type == TOKEN_OP_E) { /* && */
+        if (type != TOKEN_INTEIRO) {
+            semantic_alert("Operador lógico '&&' usado com tipo não booleano.");
+        }
+        consume(TOKEN_OP_E);
+        TokenType right_type = parse_relational_expression(); /* Right operand of logical AND expression */
+        if (right_type != TOKEN_INTEIRO) {
+            semantic_alert("Operador lógico '&&' usado com tipo não booleano na expressão lógica.");
+        }
+        type = TOKEN_INTEIRO; /* Result is boolean */
+    }
+    return type;
+}
+
+/* parse_expressao will now handle logical OR (lowest precedence) */
+static TokenType parse_expressao() {
+    TokenType type = parse_logical_and_expression(); /* Left operand of logical OR expression */
+
+    /* Handle logical OR operators (||) */
+    while (currentToken->type == TOKEN_OP_OU) { /* || */
+        if (type != TOKEN_INTEIRO) {
+            semantic_alert("Operador lógico '||' usado com tipo não booleano.");
+        }
+        consume(TOKEN_OP_OU);
+        TokenType right_expr_type = parse_logical_and_expression(); /* Right operand of logical OR expression */
+        if (right_expr_type != TOKEN_INTEIRO) {
+            semantic_alert("Operador lógico '||' usado com tipo não booleano na expressão lógica.");
+        }
+        type = TOKEN_INTEIRO; /* Result of logical expression is booleano (inteiro) */
+    }
+
+    return type;
+}
+
+
+static void parse_comando_se() {
+    consume(TOKEN_SE);
     consume(TOKEN_LPAREN);
+    parse_expressao();
     consume(TOKEN_RPAREN);
-    parse_bloco();
+
+    in_se_senao_block = 1;
+    if (currentToken->type == TOKEN_LBRACE) {
+        parse_bloco();
+    }
+    else {
+        parse_comando();
+    }
+    in_se_senao_block = 0;
+
+    if (currentToken->type == TOKEN_SENAO) {
+        consume(TOKEN_SENAO);
+        in_se_senao_block = 1;
+        if (currentToken->type == TOKEN_LBRACE) {
+            parse_bloco();
+        }
+        else {
+            parse_comando();
+        }
+        in_se_senao_block = 0;
+    }
+}
+
+static void parse_comando_para() {
+    consume(TOKEN_PARA);
+    consume(TOKEN_LPAREN);
+
+    if (currentToken->type != TOKEN_PONTO_VIRGULA) {
+        parse_atribuicao();
+    } else {
+        consume(TOKEN_PONTO_VIRGULA);
+    }
+
+    if (currentToken->type != TOKEN_PONTO_VIRGULA) {
+        parse_expressao();
+    }
+    consume(TOKEN_PONTO_VIRGULA);
+
+    if (currentToken->type != TOKEN_RPAREN) {
+        parse_expressao(); /* Simplificado por enquanto */
+    }
+    consume(TOKEN_RPAREN);
+
+    if (currentToken->type == TOKEN_LBRACE) {
+        parse_bloco();
+    }
+    else {
+        parse_comando();
+    }
+}
+
+static void parse_comando_leia() {
+    consume(TOKEN_LEIA);
+    consume(TOKEN_LPAREN);
+    do {
+        if (currentToken->type == TOKEN_VIRGULA) consume(TOKEN_VIRGULA);
+        if (find_symbol(currentToken->value) == NULL) {
+            char msg[256];
+            sprintf(msg, "Variável '%s' não declarada.", currentToken->value);
+            semantic_alert(msg);
+        }
+        consume(TOKEN_ID_VAR);
+    } while (currentToken->type == TOKEN_VIRGULA);
+    consume(TOKEN_RPAREN);
+    consume(TOKEN_PONTO_VIRGULA);
+}
+
+static void parse_comando_escreva() {
+    consume(TOKEN_ESCREVA);
+    consume(TOKEN_LPAREN);
+    do {
+        if (currentToken->type == TOKEN_VIRGULA) consume(TOKEN_VIRGULA);
+        if (currentToken->type == TOKEN_LITERAL_TEXTO) {
+            consume(TOKEN_LITERAL_TEXTO);
+        }
+        else {
+            parse_expressao();
+        }
+    } while (currentToken->type == TOKEN_VIRGULA);
+    consume(TOKEN_RPAREN);
+    consume(TOKEN_PONTO_VIRGULA);
+}
+
+static void parse_retorno() {
+    consume(TOKEN_RETORNO);
+        parse_expressao(); /* O tipo de retorno deve ser verificado contra o tipo da função */
+    consume(TOKEN_PONTO_VIRGULA);
 }
 
 static void parse_bloco() {
@@ -174,21 +440,14 @@ static void parse_comando() {
             parse_declaracao_variavel();
             break;
         case TOKEN_ID_VAR:
-        case TOKEN_LITERAL_INT:
-        case TOKEN_LITERAL_DEC:
-        case TOKEN_LITERAL_TEXTO:
-        case TOKEN_LPAREN: /* For expressions like (a + b) */
-            /* Check for assignment or increment/decrement */
-            if (currentToken->type == TOKEN_ID_VAR && (peek_token()->type == TOKEN_OP_ATRIB || peek_token()->type == TOKEN_OP_INC || peek_token()->type == TOKEN_OP_DEC)) {
-                if (peek_token()->type == TOKEN_OP_ATRIB) {
-                    parse_atribuicao();
-                } else { /* Increment or decrement */
-                    consume(currentToken->type); /* Consume the ID_VAR */
-                    /* At this point, currentToken is the OP_INC or OP_DEC */
-                    consume(currentToken->type); /* Consume ++ or -- */
-                    consume(TOKEN_PONTO_VIRGULA);
-                }
-            } else { /* It's a general expression */
+            if (peek_token()->type == TOKEN_OP_ATRIB) {
+                parse_atribuicao();
+            } else if (peek_token()->type == TOKEN_OP_INC || peek_token()->type == TOKEN_OP_DEC) {
+                consume(TOKEN_ID_VAR); /* Consume !x */
+                consume(peek_token()->type); /* Consume ++ or -- */
+                consume(TOKEN_PONTO_VIRGULA); /* Expect semicolon */
+            }
+            else { /* It's a general expression */
                 parse_expressao();
                 consume(TOKEN_PONTO_VIRGULA);
             }
@@ -210,307 +469,76 @@ static void parse_comando() {
             break;
         default:
             error("Comando inválido ou inesperado.");
-            /* Avança para tentar recuperar, mas pode causar problemas */
             free_token(currentToken);
             currentToken = get_next_token();
             break;
     }
 }
 
-/* Implementações vazias para o resto das funções de parsing (a serem completadas) */
-static void parse_tipo() {
-    if (currentToken->type == TOKEN_INTEIRO || currentToken->type == TOKEN_TEXTO || currentToken->type == TOKEN_DECIMAL) {
-        consume(currentToken->type);
-    } else {
-        error("Esperava-se um tipo de dado (inteiro, texto, decimal).");
-    }
-}
-
-static void parse_declaracao_variavel() {
-    if (in_se_senao_block) {
-        error("Declaração de variável não permitida dentro de um bloco se/senao.");
-    }
-    TokenType type = currentToken->type;
-    parse_tipo();
-    do {
-        if (currentToken->type == TOKEN_VIRGULA) {
-            consume(TOKEN_VIRGULA);
-        }
-        add_symbol(currentToken->value, type);
+static void parse_funcao_def() {
+    char* previous_scope = current_scope;
+    consume(TOKEN_FUNCAO);
+    current_scope = my_strdup(currentToken->value);
+    consume(TOKEN_ID_FUNC);
+    consume(TOKEN_LPAREN);
+    if (currentToken->type != TOKEN_RPAREN) {
+        TokenType type = currentToken->type;
+        consume(type);
+        add_symbol(currentToken->value, type, current_scope);
         consume(TOKEN_ID_VAR);
-        if (currentToken->type == TOKEN_OP_ATRIB) {
-            consume(TOKEN_OP_ATRIB);
-            parse_expressao();
-        }
-        if (currentToken->type == TOKEN_LBRACKET) {
-            consume(TOKEN_LBRACKET);
-            if (currentToken->type == TOKEN_LITERAL_INT || currentToken->type == TOKEN_LITERAL_DEC) {
-                consume(currentToken->type);
-            } else {
-                error("Esperava-se um tamanho para o tipo de dado.");
-            }
-            consume(TOKEN_RBRACKET);
-        }
-    } while (currentToken->type == TOKEN_VIRGULA);
-
-    consume(TOKEN_PONTO_VIRGULA);
-}
-static void parse_atribuicao_sem_pv() {
-    consume(TOKEN_ID_VAR);
-    consume(TOKEN_OP_ATRIB);
-    parse_expressao();
-}
-
-static void parse_atribuicao() {
-    parse_atribuicao_sem_pv();
-    consume(TOKEN_PONTO_VIRGULA);
-}
-static void parse_comando_se() {
-
-    consume(TOKEN_SE);
-    consume(TOKEN_LPAREN);
-    parse_expressao();
-    consume(TOKEN_RPAREN);
-
-    in_se_senao_block = 1;
-    if (currentToken->type == TOKEN_LBRACE) {
-        parse_bloco();
-    } else {
-        parse_comando();
-    }
-    in_se_senao_block = 0;
-
-    if (currentToken->type == TOKEN_SENAO) {
-        consume(TOKEN_SENAO);
-        in_se_senao_block = 1;
-        if (currentToken->type == TOKEN_LBRACE) {
-            parse_bloco();
-        } else {
-            parse_comando();
-        }
-        in_se_senao_block = 0;
-    }
-}
-static void parse_comando_para() {
-    consume(TOKEN_PARA);
-    consume(TOKEN_LPAREN);
-
-    /* x1 - Inicialização */
-    if (currentToken->type != TOKEN_PONTO_VIRGULA) {
-        parse_atribuicao_sem_pv();
         while (currentToken->type == TOKEN_VIRGULA) {
             consume(TOKEN_VIRGULA);
-            parse_atribuicao_sem_pv();
+            type = currentToken->type;
+            consume(type);
+            add_symbol(currentToken->value, type, current_scope);
+            consume(TOKEN_ID_VAR);
         }
     }
-    consume(TOKEN_PONTO_VIRGULA);
-
-    /* x2 - Condição */
-    if (currentToken->type != TOKEN_PONTO_VIRGULA) {
-        parse_expressao();
-    }
-    consume(TOKEN_PONTO_VIRGULA);
-
-    /* x3 - Incremento */
-    if (currentToken->type != TOKEN_RPAREN) {
-        parse_expressao_para_x3(); /* Usa a nova função para x3 */
-    }
-
     consume(TOKEN_RPAREN);
-
-    if (currentToken->type == TOKEN_LBRACE) {
-        parse_bloco();
-    } else {
-        parse_comando();
-    }
+    parse_bloco();
+    free(current_scope);
+    current_scope = previous_scope;
 }
-static void parse_comando_leia() {
-    consume(TOKEN_LEIA);
+
+static void parse_principal_def() {
+    char* previous_scope = current_scope;
+    current_scope = "principal";
+    consume(TOKEN_PRINCIPAL);
     consume(TOKEN_LPAREN);
-    consume(TOKEN_ID_VAR);
-    while (currentToken->type == TOKEN_VIRGULA) {
-        consume(TOKEN_VIRGULA);
-        consume(TOKEN_ID_VAR);
-    }
     consume(TOKEN_RPAREN);
-    consume(TOKEN_PONTO_VIRGULA);
+    parse_bloco();
+    current_scope = previous_scope;
 }
-static void parse_comando_escreva() {
-    consume(TOKEN_ESCREVA);
-    consume(TOKEN_LPAREN);
-    if (currentToken->type == TOKEN_LITERAL_TEXTO) {
-        consume(currentToken->type);
-    } else if (currentToken->type == TOKEN_ID_VAR) {
-        if (find_symbol(currentToken->value) == NULL) {
-            printf("ALERTA SEMÂNTICO na linha %d: Variável '%s' não declarada.\n", currentToken->line, currentToken->value);
-        }
-        consume(currentToken->type);
-    } else {
-        parse_expressao();
-    }
-    while (currentToken->type == TOKEN_VIRGULA) {
-        consume(TOKEN_VIRGULA);
-        if (currentToken->type == TOKEN_LITERAL_TEXTO) {
-            consume(currentToken->type);
-        }
-        else if (currentToken->type == TOKEN_ID_VAR) {
-            if (find_symbol(currentToken->value) == NULL) {
-                printf("ALERTA SEMÂNTICO na linha %d: Variável '%s' não declarada.\n", currentToken->line, currentToken->value);
-            }
-            consume(currentToken->type);
-        } else {
-            parse_expressao();
-        }
-    }
-    consume(TOKEN_RPAREN);
-    consume(TOKEN_PONTO_VIRGULA);
-}
-static void parse_retorno() {
-    consume(TOKEN_RETORNO);
-    parse_expressao();
-    consume(TOKEN_PONTO_VIRGULA);
-}
-static void parse_fator() {
-    switch (currentToken->type) {
-        case TOKEN_LITERAL_INT:
-        case TOKEN_LITERAL_DEC:
-        case TOKEN_LITERAL_TEXTO:
-            consume(currentToken->type);
-            break;
-        case TOKEN_ID_VAR:
-            if (find_symbol(currentToken->value) == NULL) {
-                printf("ALERTA SEMÂNTICO na linha %d: Variável '%s' não declarada.\n", currentToken->line, currentToken->value);
-            }
-            consume(currentToken->type);
-            break;
-        case TOKEN_ID_FUNC:
-            consume(TOKEN_ID_FUNC);
-            consume(TOKEN_LPAREN);
-            if (currentToken->type != TOKEN_RPAREN) {
-                parse_expressao();
-                while (currentToken->type == TOKEN_VIRGULA) {
-                    consume(TOKEN_VIRGULA);
-                    parse_expressao();
+
+static void parse_programa() {
+    int principal_found = 0;
+    while (currentToken->type != TOKEN_EOF && !syntax_error) {
+        switch (currentToken->type) {
+            case TOKEN_FUNCAO:
+                parse_funcao_def();
+                break;
+            case TOKEN_PRINCIPAL:
+                if (principal_found) {
+                    error("Múltiplas definições do módulo principal.");
                 }
-            }
-            consume(TOKEN_RPAREN);
-            break;
-        case TOKEN_LPAREN:
-            consume(TOKEN_LPAREN);
-            parse_expressao();
-            consume(TOKEN_RPAREN);
-            break;
-        default:
-            error("Fator inválido em expressão.");
+                parse_principal_def();
+                principal_found = 1;
+                break;
+            default:
+                error("Esperava-se uma definição de função ou o módulo principal.");
+                return;
+        }
+    }
+    if (!principal_found) {
+        error("Módulo Principal Inexistente.");
     }
 }
 
-static void parse_termo() {
-    parse_fator();
-    while (currentToken->type == TOKEN_OP_MULT || currentToken->type == TOKEN_OP_DIV || currentToken->type == TOKEN_OP_EXP) {
-        consume(currentToken->type);
-        parse_fator();
+void parse() {
+    currentToken = get_next_token();
+    parse_programa();
+    if (!syntax_error && currentToken->type != TOKEN_EOF) {
+        error("Código extra encontrado após o final do programa.");
     }
+    printf("\nAnálise sintática e semântica concluída.\n");
 }
-
-static void parse_expressao_simples() {
-    parse_termo();
-    while (currentToken->type == TOKEN_OP_SOMA || currentToken->type == TOKEN_OP_SUB) {
-        consume(currentToken->type);
-        parse_termo();
-    }
-}
-
-static void parse_expressao() {
-    parse_expressao_simples();
-
-    while (currentToken->type == TOKEN_OP_IGUAL || currentToken->type == TOKEN_OP_DIF ||
-           currentToken->type == TOKEN_OP_MENOR || currentToken->type == TOKEN_OP_MENOR_IGUAL ||
-           currentToken->type == TOKEN_OP_MAIOR || currentToken->type == TOKEN_OP_MAIOR_IGUAL) {
-        consume(currentToken->type);
-        parse_expressao_simples();
-    }
-    while (currentToken->type == TOKEN_OP_E || currentToken->type == TOKEN_OP_OU) {
-        consume(currentToken->type);
-        parse_expressao_simples();
-    }
-}
-
-/* Implementações para o laço 'para' x3 */
-static void parse_fator_para_x3() {
-    /* Trata operadores de pré-incremento/decremento */
-    if (currentToken->type == TOKEN_OP_INC || currentToken->type == TOKEN_OP_DEC) {
-        consume(currentToken->type);
-        consume(TOKEN_ID_VAR);
-        return; /* Retorna pois isso é um fator completo */
-    }
-
-    switch (currentToken->type) {
-        case TOKEN_LITERAL_INT:
-        case TOKEN_LITERAL_DEC:
-        case TOKEN_LITERAL_TEXTO:
-            consume(currentToken->type);
-            break;
-        case TOKEN_ID_VAR:
-            if (find_symbol(currentToken->value) == NULL) {
-                printf("ALERTA SEMÂNTICO na linha %d: Variável '%s' não declarada.\n", currentToken->line, currentToken->value);
-            }
-            consume(currentToken->type);
-            break;
-        case TOKEN_ID_FUNC:
-            consume(TOKEN_ID_FUNC);
-            consume(TOKEN_LPAREN);
-            if (currentToken->type != TOKEN_RPAREN) {
-                parse_expressao();
-                while (currentToken->type == TOKEN_VIRGULA) {
-                    consume(TOKEN_VIRGULA);
-                    parse_expressao();
-                }
-            }
-            consume(TOKEN_RPAREN);
-            break;
-        case TOKEN_LPAREN:
-            consume(TOKEN_LPAREN);
-            parse_expressao_para_x3();
-            consume(TOKEN_RPAREN);
-            break;
-        default:
-            error("Fator inválido em expressão para x3 do para.");
-    }
-
-    /* Trata operadores de pós-incremento/decremento */
-    if (currentToken->type == TOKEN_OP_INC || currentToken->type == TOKEN_OP_DEC) {
-        consume(currentToken->type);
-    }
-}
-
-static void parse_termo_para_x3() {
-    parse_fator_para_x3();
-    while (currentToken->type == TOKEN_OP_MULT || currentToken->type == TOKEN_OP_DIV || currentToken->type == TOKEN_OP_EXP) {
-        consume(currentToken->type);
-        parse_fator_para_x3();
-    }
-}
-
-static void parse_expressao_simples_para_x3() {
-    parse_termo_para_x3();
-    while (currentToken->type == TOKEN_OP_SOMA || currentToken->type == TOKEN_OP_SUB) {
-        consume(currentToken->type);
-        parse_termo_para_x3();
-    }
-}
-
-static void parse_expressao_para_x3() {
-    parse_expressao_simples_para_x3();
-    while (currentToken->type == TOKEN_OP_IGUAL || currentToken->type == TOKEN_OP_DIF ||
-           currentToken->type == TOKEN_OP_MENOR || currentToken->type == TOKEN_OP_MENOR_IGUAL ||
-           currentToken->type == TOKEN_OP_MAIOR || currentToken->type == TOKEN_OP_MAIOR_IGUAL) {
-        consume(currentToken->type);
-        parse_expressao_simples_para_x3();
-    }
-    while (currentToken->type == TOKEN_OP_E || currentToken->type == TOKEN_OP_OU) {
-        consume(currentToken->type);
-        parse_expressao_simples_para_x3();
-    }
-}
-

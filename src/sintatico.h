@@ -3,6 +3,9 @@
 
 #include "token.h"
 
+struct Symbol;
+
+
 void parse();
 
 #endif

@@ -1,0 +1,7 @@
+principal() {
+    inteiro !a;
+    inteiro !b;
+    se (!a == 1 &&!b == 2) {
+        escreva("teste");
+    }
+}

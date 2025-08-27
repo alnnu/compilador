@@ -276,7 +276,7 @@ Token* get_next_token() {
     while (current_file_content[current_pos] != '\0') {
         char current_char = current_file_content[current_pos];
 
-        if (isspace(current_char) || current_char == '\\') {
+        if (isspace(current_char)) { /* Removed || current_char == '\\' */
             if (current_char == '\n') current_line++;
             current_pos++;
             continue;
@@ -431,12 +431,18 @@ Token* get_next_token() {
                 return create_token(TOKEN_OP_MAIOR, my_strdup(">"));
             case '&':
                 if (current_file_content[current_pos + 1] == '&') {
+                    if (!isspace(current_file_content[current_pos - 1]) || !isspace(current_file_content[current_pos + 2])) {
+                        error("Operador lógico '&&' deve ser cercado por espaços.");
+                    }
                     current_pos += 2;
                     return create_token(TOKEN_OP_E, my_strdup("&&"));
                 }
                 break;
             case '|':
                 if (current_file_content[current_pos + 1] == '|') {
+                    if (!isspace(current_file_content[current_pos - 1]) || !isspace(current_file_content[current_pos + 2])) {
+                        error("Operador lógico '||' deve ser cercado por espaços.");
+                    }
                     current_pos += 2;
                     return create_token(TOKEN_OP_OU, my_strdup("||"));
                 }

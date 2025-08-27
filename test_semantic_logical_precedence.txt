@@ -1,0 +1,8 @@
+principal() {
+    inteiro !a;
+    inteiro !b;
+    inteiro !c;
+    se (!a == 1 && !b == 2 || !c == 3) {
+        escreva("ok");
+    }
+}

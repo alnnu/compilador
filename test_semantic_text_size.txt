@@ -1,0 +1,4 @@
+principal() {
+    texto !a[0];
+    texto !b[-5];
+}

@@ -1,0 +1,26 @@
+
+### **1. Gestão de Símbolos e Escopo**
+* **Verificar Declaração Prévia:** Garantir que todas as variáveis sejam declaradas antes de serem utilizadas.
+* **Garantir Nomes Únicos:** Assegurar que não existam variáveis globais ou funções com o mesmo nome.
+* **Validar Escopo de Declaração:** Impedir que variáveis sejam declaradas em locais proibidos (como dentro de um `leia()` ou `se()`).
+* **Proibir Redeclaração:** Não permitir que parâmetros de uma função sejam declarados novamente dentro dela.
+
+### **2. Checagem de Tipos**
+* **Atribuições:** Validar se o tipo de uma variável é compatível com o valor que ela está recebendo.
+* **Expressões Matemáticas:** Verificar se os operadores matemáticos (`+`, `-`, `*`, `/`, `^`) são usados com tipos de dados compatíveis (numéricos).
+* **Testes e Comparações:**
+    * Garantir que os tipos de dados em ambos os lados de um operador relacional (`==`, `>`, `<`, etc.) sejam compatíveis.
+    * Aplicar a regra de que o tipo `texto` só pode ser comparado com `==` (igual) e `<>` (diferente).
+
+### **3. Validação de Funções**
+* **Existência da Função `principal`:** Confirmar que existe exatamente uma e apenas uma função `principal()` no código.
+* **Chamadas de Função:** Verificar se a função chamada realmente existe.
+* **Parâmetros:** Assegurar que o número e os tipos dos argumentos enviados na chamada de uma função correspondem aos da sua declaração.
+* **Retorno Obrigatório:** Garantir que toda `funcao` tenha uma instrução de `retorno`.
+
+### **4. Tratamento de Erros e Alertas**
+* **Emitir Alertas:** Para qualquer incompatibilidade de tipo, o compilador deve emitir uma mensagem de **ALERTA** clara, informando o problema e a linha.
+* **Não Interromper a Execução:** Em caso de um ALERTA semântico, a compilação **não deve ser finalizada**.
+* **Emitir Erros:** Problemas graves, como a ausência da função `principal`, devem gerar um **ERRO** e finalizar a execução.
+
+

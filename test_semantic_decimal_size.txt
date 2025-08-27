@@ -1,0 +1,4 @@
+principal() {
+    decimal !d[1.2.3];
+    decimal !e[1];
+}
