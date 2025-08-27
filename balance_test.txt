@@ -1,0 +1,6 @@
+principal() {
+    inteiro !a;
+    escreva("hello");
+    se ( !a > 5 {
+        escreva("world");
+    }

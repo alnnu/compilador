@@ -1,0 +1,11 @@
+principal() {
+    inteiro !x, !y, !res;
+    !x = 10;
+    !y = 20;
+    !res = __soma(!x, !y);
+    escreva(!z);
+}
+
+funcao inteiro __soma(inteiro !a, inteiro !b) {
+    retorno !a + !b;
+}

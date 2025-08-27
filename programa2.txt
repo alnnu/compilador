@@ -6,7 +6,7 @@ funcao __vazia() {
     escreva("Função vazia chamada");
 }
 
-funcao __principa() {
+principal() {
     inteiro !x = 10;
     inteiro !y = 20;
     inteiro !resultado;
@@ -18,5 +18,4 @@ funcao __principa() {
     !x ++;
     !x <= !y;
     !x >= !y;
-    +++
 }

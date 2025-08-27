@@ -81,24 +81,32 @@ void Free(void* ptr, size_t size) {
 
 /* --- Verificação de Balanceamento --- */
 #define STACK_SIZE 1024
-char balance_stack[STACK_SIZE];
-int stack_top = -1;
-int balance_error_line = -1;
 
-void push(char c) {
+typedef struct {
+    char character;
+    int line;
+} StackItem;
+
+StackItem balance_stack[STACK_SIZE];
+int stack_top = -1;
+
+void push(char c, int line) {
     if (stack_top < STACK_SIZE - 1) {
-        balance_stack[++stack_top] = c;
+        stack_top++;
+        balance_stack[stack_top].character = c;
+        balance_stack[stack_top].line = line;
     } else {
-        printf("ERRO na linha %d: Estouro da pilha de balanceamento.\n", balance_error_line);
+        printf("ERRO na linha %d: Estouro da pilha de balanceamento.\n", line);
         exit(1);
     }
 }
 
-char pop() {
+StackItem pop() {
     if (stack_top >= 0) {
         return balance_stack[stack_top--];
     }
-    return '\0';
+    StackItem empty_item = {'\0', -1};
+    return empty_item;
 }
 
 int is_empty() {
@@ -119,31 +127,35 @@ int check_balance(const char* content) {
 
         if (c == '"') {
             if (in_string) {
-                if (pop() != '"') {
-                    balance_error_line = line;
+                StackItem popped = pop();
+                if (popped.character != '"') {
+                    printf("ERRO: Aspas duplas abertas na linha %d não foram fechadas.\n", popped.line);
                     return 0;
                 }
                 in_string = 0;
             } else {
-                push('"');
+                push('"', line);
                 in_string = 1;
             }
         } else if (!in_string) {
             if (c == '(' || c == '{' || c == '[') {
-                push(c);
+                push(c, line);
             } else if (c == ')') {
-                if (pop() != '(') {
-                    balance_error_line = line;
+                StackItem popped = pop();
+                if (popped.character != '(') {
+                    printf("ERRO: ')' na linha %d não tem '(' correspondente. O '(' que abriu o escopo foi na linha %d\n", line, popped.line);
                     return 0;
                 }
             } else if (c == '}') {
-                if (pop() != '{') {
-                    balance_error_line = line;
+                StackItem popped = pop();
+                if (popped.character != '{') {
+                    printf("ERRO: '}' na linha %d não tem '{' correspondente. O '{' que abriu o escopo foi na linha %d\n", line, popped.line);
                     return 0;
                 }
             } else if (c == ']') {
-                if (pop() != '[') {
-                    balance_error_line = line;
+                StackItem popped = pop();
+                if (popped.character != '[') {
+                    printf("ERRO: ']' na linha %d não tem '[' correspondente. O '[' que abriu o escopo foi na linha %d\n", line, popped.line);
                     return 0;
                 }
             }
@@ -151,7 +163,8 @@ int check_balance(const char* content) {
     }
 
     if (!is_empty()) {
-        balance_error_line = line;
+        StackItem remaining = pop();
+        printf("ERRO: Símbolo '%c' aberto na linha %d não foi fechado.\n", remaining.character, remaining.line);
         return 0;
     }
 
@@ -211,6 +224,8 @@ char* current_file_content;
 int current_pos = 0;
 int current_line = 1;
 
+static Token* ungot_token = NULL;
+
 Token* create_token(TokenType type, char* value) {
     Token* token = (Token*)Malloc(sizeof(Token));
     token->type = type;
@@ -224,6 +239,17 @@ void free_token(Token* token) {
         if (token->value) Free(token->value, strlen(token->value) + 1);
         Free(token, sizeof(Token));
     }
+}
+
+void unget_token(Token* token) {
+    ungot_token = token;
+}
+
+Token* peek_token() {
+    if (ungot_token == NULL) {
+        ungot_token = get_next_token();
+    }
+    return ungot_token;
 }
 
 int is_keyword(const char* str) {
@@ -242,6 +268,11 @@ int is_keyword(const char* str) {
 }
 
 Token* get_next_token() {
+    if (ungot_token != NULL) {
+        Token* token = ungot_token;
+        ungot_token = NULL;
+        return token;
+    }
     while (current_file_content[current_pos] != '\0') {
         char current_char = current_file_content[current_pos];
 
@@ -457,7 +488,6 @@ char* read_file_content(const char* filepath) {
 void init_lexico(const char* filepath) {
     current_file_content = read_file_content(filepath);
     if (!check_balance(current_file_content)) {
-        printf("ERRO na linha %d: Símbolos desbalanceados.\n", balance_error_line);
         exit(1);
     }
     printf("Verificação de balanceamento concluída com sucesso.\n\n");

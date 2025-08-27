@@ -7,10 +7,11 @@ principal() {
     leia(!a);
     se (!a >= !b2) {
         escreva("A e maior", !a);
-    } senao {
+    }
+    senao {
         escreva("B e maior", "b");
     }
-    para (!d = 1; !d <= 100; !d = !d + 2) {
+    para (!d = 1; !d <= 100; !d++) {
         escreva("D", !d);
     }
 }

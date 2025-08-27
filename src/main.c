@@ -16,7 +16,6 @@ int main(int argc, char *argv[]) {
     parse();
 
     /* Libera a memória do conteúdo do arquivo, que é uma variável global em lexico.c */
-    /* Idealmente, teríamos uma função de limpeza para o léxico. */
     free(current_file_content);
 
     return 0;
