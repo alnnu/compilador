@@ -42,20 +42,16 @@ static void error(const char* message) {
     exit(1);
 }
 
-static void semantic_alert(const char* message) {
+void semantic_alert(const char* message) {
     printf("ALERTA SEMÂNTICO na linha %d: %s\n", currentToken->line, message);
 }
 
+
+
+
 #define MAX_SYMBOLS 1024
 
-typedef struct {
-    char* name;
-    TokenType type;
-    char* scope;
-    TokenType return_type; /* For functions: stores the inferred return type */
-    int has_return_statement; /* For functions: flag if a return statement was found */
-    char* initial_value_str; /* New field for "Possible Value" */
-} Symbol;
+
 
 Symbol symbol_table[MAX_SYMBOLS];
 int symbol_count = 0;
@@ -82,6 +78,12 @@ void add_symbol(const char* name, TokenType type, const char* scope) {
         symbol_table[symbol_count].return_type = TOKEN_ERRO; /* Initialize for functions */
         symbol_table[symbol_count].has_return_statement = 0; /* Initialize for functions */
         symbol_table[symbol_count].initial_value_str = NULL; /* Initialize new field */
+        /* Initialize new fields for function parameters */
+        symbol_table[symbol_count].num_params = 0;
+        int i;
+        for (i = 0; i < MAX_PARAMS; i++) {
+            symbol_table[symbol_count].param_types[i] = TOKEN_ERRO; /* Or some other default invalid type */
+        }
         symbol_count++;
     } else {
         error("Estouro da tabela de símbolos.");
@@ -145,10 +147,18 @@ static void parse_declaracao_variavel() {
         }
 
         char* var_name = my_strdup(currentToken->value);
-        if (find_symbol(var_name) != NULL && strcmp(find_symbol(var_name)->scope, current_scope) == 0) {
-            char msg[256];
-            sprintf(msg, "Variável '%s' já declarada neste escopo.", var_name);
-            semantic_alert(msg);
+        Symbol* existing_symbol = find_symbol(var_name);
+        if (existing_symbol != NULL) {
+            if (strcmp(existing_symbol->scope, current_scope) == 0) {
+                char msg[256];
+                sprintf(msg, "Variável '%s' já declarada neste escopo.", var_name);
+                semantic_alert(msg);
+            } else {
+                char msg[256];
+                sprintf(msg, "Variável '%s' declarada em escopo diferente ('%s'), sombreando declaração anterior em '%s'.",
+                        var_name, current_scope, existing_symbol->scope);
+                semantic_alert(msg);
+            }
         }
         add_symbol(var_name, type, current_scope); /* Add symbol first */
 
@@ -263,20 +273,38 @@ static TokenType parse_fator() {
             consume(TOKEN_ID_VAR);
             break;
         }
-        case TOKEN_ID_FUNC:
-            /* A ser implementado: buscar tipo de retorno da função */
-            type = TOKEN_INTEIRO; /* Placeholder */
+        case TOKEN_ID_FUNC: {
+            Symbol* func_symbol = find_symbol(currentToken->value);
+            if (func_symbol == NULL || func_symbol->type != TOKEN_FUNCAO) {
+                char msg[256];
+                sprintf(msg, "Função '%s' não declarada.", currentToken->value);
+                semantic_alert(msg);
+                type = TOKEN_ERRO; /* Assume erro se não declarada */
+            } else {
+                type = func_symbol->return_type; /* Use the function's declared return type */
+            }
             consume(TOKEN_ID_FUNC);
             consume(TOKEN_LPAREN);
+            TokenType arg_types[MAX_PARAMS];
+            int num_args = 0;
             if (currentToken->type != TOKEN_RPAREN) {
-                parse_expressao();
+                arg_types[num_args++] = parse_expressao();
                 while (currentToken->type == TOKEN_VIRGULA) {
                     consume(TOKEN_VIRGULA);
-                    parse_expressao();
+                    if (num_args < MAX_PARAMS) {
+                        arg_types[num_args++] = parse_expressao();
+                    } else {
+                        semantic_alert("Número máximo de argumentos excedido na chamada da função.");
+                        parse_expressao(); /* Consume the extra argument */
+                    }
                 }
             }
             consume(TOKEN_RPAREN);
+            if (func_symbol != NULL && func_symbol->type == TOKEN_FUNCAO) {
+                semantico_check_function_call(func_symbol, arg_types, num_args);
+            }
             break;
+        }
         case TOKEN_LPAREN:
             consume(TOKEN_LPAREN);
             type = parse_expressao();
@@ -511,19 +539,36 @@ static void parse_comando() {
                 consume(TOKEN_PONTO_VIRGULA);
             }
             break;
-        case TOKEN_ID_FUNC: /* New case for function calls as commands */
+        case TOKEN_ID_FUNC: { /* New case for function calls as commands */
+            Symbol* func_symbol = find_symbol(currentToken->value);
+            if (func_symbol == NULL || func_symbol->type != TOKEN_FUNCAO) {
+                char msg[256];
+                sprintf(msg, "Função '%s' não declarada.", currentToken->value);
+                semantic_alert(msg);
+            }
             consume(TOKEN_ID_FUNC);
             consume(TOKEN_LPAREN);
+            TokenType arg_types[MAX_PARAMS];
+            int num_args = 0;
             if (currentToken->type != TOKEN_RPAREN) {
-                parse_expressao(); /* Parse first argument */
+                arg_types[num_args++] = parse_expressao(); /* Parse first argument */
                 while (currentToken->type == TOKEN_VIRGULA) {
                     consume(TOKEN_VIRGULA);
-                    parse_expressao(); /* Parse subsequent arguments */
+                    if (num_args < MAX_PARAMS) {
+                        arg_types[num_args++] = parse_expressao(); /* Parse subsequent arguments */
+                    } else {
+                        semantic_alert("Número máximo de argumentos excedido na chamada da função.");
+                        parse_expressao(); /* Consume the extra argument */
+                    }
                 }
             }
             consume(TOKEN_RPAREN);
+            if (func_symbol != NULL && func_symbol->type == TOKEN_FUNCAO) {
+                semantico_check_function_call(func_symbol, arg_types, num_args);
+            }
             consume(TOKEN_PONTO_VIRGULA);
             break;
+        }
         case TOKEN_SE:
             parse_comando_se();
             break;
@@ -568,12 +613,24 @@ static void parse_funcao_def() {
         TokenType type = currentToken->type;
         consume(type);
         add_symbol(currentToken->value, type, current_scope);
+        if (func_symbol->num_params < MAX_PARAMS) {
+            func_symbol->param_types[func_symbol->num_params] = type;
+            func_symbol->num_params++;
+        } else {
+            semantic_alert("Número máximo de parâmetros excedido para a função.");
+        }
         consume(TOKEN_ID_VAR);
         while (currentToken->type == TOKEN_VIRGULA) {
             consume(TOKEN_VIRGULA);
             type = currentToken->type;
             consume(type);
             add_symbol(currentToken->value, type, current_scope);
+            if (func_symbol->num_params < MAX_PARAMS) {
+                func_symbol->param_types[func_symbol->num_params] = type;
+                func_symbol->num_params++;
+            } else {
+                semantic_alert("Número máximo de parâmetros excedido para a função.");
+            }
             consume(TOKEN_ID_VAR);
         }
     }

@@ -3,6 +3,10 @@
 
 #include "token.h"
 
-void semantic_alert(const char* message);
+#include "sintatico.h" /* For Symbol struct definition */ 
+
+void semantico_check_function_call(Symbol* func_symbol, TokenType* arg_types, int num_args);
+
+
 
 #endif

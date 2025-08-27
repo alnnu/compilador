@@ -7,6 +7,9 @@
 /* Variáveis globais do analisador léxico */
 extern char* current_file_content;
 extern int current_line;
+extern long max_memory_used; /* Declare max_memory_used as extern */
+
+long get_max_memory_used(); /* Getter for max_memory_used */
 
 /* Funções do analisador léxico */
 void init_lexico(const char* filepath);

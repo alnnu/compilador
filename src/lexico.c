@@ -37,8 +37,8 @@ char* my_strndup(const char* s, size_t n) {
 }
 
 int is_special_char(char c) {
-    return (c == '!' || c == '=' || c == '+' || c == '-'
-            || c == '*' || c == '/' || c == '^' || c == '<'
+    return (c == '!' || c == '=' || c == '+' || c == '-' 
+            || c == '*' || c == '/' || c == '^' || c == '<' 
             || c == '>' || c == '&' || c == '|');
 }
 
@@ -276,7 +276,7 @@ Token* get_next_token() {
     while (current_file_content[current_pos] != '\0') {
         char current_char = current_file_content[current_pos];
 
-        if (isspace(current_char)) { /* Removed || current_char == '\\' */
+        if (isspace(current_char)) { /* Removed || current_char == '\' */
             if (current_char == '\n') current_line++;
             current_pos++;
             continue;
@@ -369,7 +369,7 @@ Token* get_next_token() {
                 if (current_file_content[current_pos + 1] == '=') {
                     current_pos += 2;
                 
-                    error("Operador inválido: !=");
+                    error("Operador inválido: != ");
                 }
                 int start = current_pos;
                 current_pos++;
@@ -386,7 +386,7 @@ Token* get_next_token() {
             case '+':
                 if (current_file_content[current_pos + 1] == '+') {
                     current_pos += 2;
-                    Token* token = create_token(TOKEN_OP_INC, my_strdup("++"));
+                    Token* token = create_token(TOKEN_OP_INC, my_strdup("++\n"));
                     return token;
                 }
                 current_pos++;
@@ -514,5 +514,6 @@ void init_lexico(const char* filepath) {
     if (!check_balance(current_file_content)) {
         exit(1);
     }
+    
     printf("Verificação de balanceamento concluída com sucesso.\n\n");
 }

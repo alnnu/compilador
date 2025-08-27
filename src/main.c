@@ -4,6 +4,7 @@
 #include "token.h"
 #include "lexico.h"
 #include "sintatico.h"
+#include "semantico.h"
 
 int main(int argc, char *argv[]) {
     const char* filepath = "programa2.txt";
@@ -14,6 +15,8 @@ int main(int argc, char *argv[]) {
     init_lexico(filepath);
     
     parse();
+
+    
 
     /* Libera a memória do conteúdo do arquivo, que é uma variável global em lexico.c */
     free(current_file_content);
