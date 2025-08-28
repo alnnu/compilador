@@ -4,6 +4,7 @@
 #include <ctype.h> /* Added for isdigit */
 #include "sintatico.h" 
 #include "lexico.h"
+#include "semantico.h"
 
 /* --- Protótipos --- */
 static void parse_programa();
@@ -13,7 +14,6 @@ static void parse_principal_def();
 static void parse_bloco();
 static void parse_comando();
 static void parse_atribuicao();
-static void parse_tipo();
 static void parse_comando_se();
 static void parse_comando_para();
 static void parse_comando_leia();
@@ -101,14 +101,6 @@ static void consume(TokenType type) {
         char msg[256];
         sprintf(msg, "Esperava-se o token %s", token_type_to_string(type));
         error(msg);
-    }
-}
-
-static void parse_tipo() {
-    if (currentToken->type == TOKEN_INTEIRO || currentToken->type == TOKEN_TEXTO || currentToken->type == TOKEN_DECIMAL) {
-        /* O tipo é consumido pela função que chama parse_tipo */
-    } else {
-        error("Esperava-se um tipo de dado (inteiro, texto, decimal).");
     }
 }
 
@@ -453,7 +445,35 @@ static void parse_comando_para() {
     consume(TOKEN_PONTO_VIRGULA);
 
     if (currentToken->type != TOKEN_RPAREN) {
-        parse_expressao(); /* Simplificado por enquanto */
+        TokenType next_type = peek_token()->type;
+        if (currentToken->type == TOKEN_ID_VAR && (next_type == TOKEN_OP_INC || next_type == TOKEN_OP_DEC)) {
+            Symbol* var = find_symbol(currentToken->value);
+            if (var == NULL) {
+                char msg[256];
+                sprintf(msg, "Variável '%s' não declarada.", currentToken->value);
+                semantic_alert(msg);
+            } else if (var->type != TOKEN_INTEIRO) {
+                semantic_alert("Operador de incremento/decremento só pode ser usado com variáveis do tipo inteiro.");
+            }
+            consume(TOKEN_ID_VAR);
+            consume(next_type);
+        } 
+        else if ((currentToken->type == TOKEN_OP_INC || currentToken->type == TOKEN_OP_DEC) && next_type == TOKEN_ID_VAR) {
+            TokenType op_type = currentToken->type;
+            consume(op_type);
+            Symbol* var = find_symbol(currentToken->value);
+             if (var == NULL) {
+                char msg[256];
+                sprintf(msg, "Variável '%s' não declarada.", currentToken->value);
+                semantic_alert(msg);
+            } else if (var->type != TOKEN_INTEIRO) {
+                semantic_alert("Operador de incremento/decremento só pode ser usado com variáveis do tipo inteiro.");
+            }
+            consume(TOKEN_ID_VAR);
+        }
+        else {
+            parse_expressao();
+        }
     }
     consume(TOKEN_RPAREN);
 

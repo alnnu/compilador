@@ -8,4 +8,4 @@ principal() {
 
 funcao inteiro __soma(inteiro !a, inteiro !b) {
     retorno !a + !b;
-}
+
